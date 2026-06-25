@@ -4,11 +4,15 @@
 
 **All data in this repository is fully anonymized dummy data. No real IPs, hostnames, credentials, or internal identifiers are present.**
 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-affanhaidar-0077B5?style=flat&logo=linkedin)](https://www.linkedin.com/in/affanhaidar)
+[![GitHub](https://img.shields.io/badge/GitHub-AffanAts-181717?style=flat&logo=github)](https://github.com/AffanAts/NOC_Dashboard)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=flat&logo=vercel)](https://affan-noc-dashboard.vercel.app/)
+
 ---
 
 ## Live Demo
 
-🔗 [View on Vercel](https://noc-dashboard.vercel.app) <!-- update this link after deploy -->
+🔗 [View on Vercel](https://affan-noc-dashboard.vercel.app/)
 
 ---
 
