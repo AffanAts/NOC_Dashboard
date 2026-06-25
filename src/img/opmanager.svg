@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- OpManager logo: 4 concentric arcs (blue, green, red, yellow) -->
+  <!-- Blue arc (outermost) -->
+  <path d="M 82,18 A 46,46 0 0,1 88,72" fill="none" stroke="#1565C0" stroke-width="11" stroke-linecap="round"/>
+  <!-- Yellow arc -->
+  <path d="M 72,10 A 54,54 0 0,1 95,80" fill="none" stroke="#F9A825" stroke-width="11" stroke-linecap="round"/>
+  <!-- Green arc -->
+  <path d="M 14,20 A 46,46 0 0,0 72,85" fill="none" stroke="#2E7D32" stroke-width="11" stroke-linecap="round"/>
+  <!-- Red arc (innermost) -->
+  <path d="M 18,35 A 34,34 0 0,0 62,85" fill="none" stroke="#C62828" stroke-width="11" stroke-linecap="round"/>
+</svg>

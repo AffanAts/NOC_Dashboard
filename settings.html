@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>NOC Settings - Acme</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0e14;
+            --bg-surface: #11161d;
+            --bg-elevated: #161c25;
+            --bg-elevated-hover: #1c2330;
+            --border-subtle: #21262d;
+            --border-default: #30363d;
+            --border-strong: #484f58;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-tertiary: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-blue-soft: rgba(88,166,255,0.12);
+            --accent-green: #3fb950;
+            --accent-yellow: #f1e05a;
+            --accent-red: #f85149;
+            --accent-red-soft: rgba(248,81,73,0.1);
+            --accent-purple: #d2a8ff;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 12px 28px rgba(0,0,0,0.5);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition: 180ms cubic-bezier(0.4,0,0.2,1);
+        }
+
+        loadAlarmSettings();
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #333; }
+
+        /* TOPBAR */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            height: 56px;
+            background: linear-gradient(180deg, var(--bg-surface), var(--bg-base));
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
+        }
+        .topbar-title {
+            font-size: 15px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #58a6ff, #d2a8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-close-tab {
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            padding: 7px 18px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all var(--transition);
+        }
+        .btn-close-tab:hover { border-color: var(--accent-red); color: var(--accent-red); background: var(--accent-red-soft); }
+
+        /* TAB BAR */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            padding: 12px 28px 0;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+        .tab-btn {
+            padding: 9px 22px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all var(--transition);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            margin-bottom: -1px;
+            letter-spacing: 0.3px;
+        }
+        .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+        .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); background: var(--accent-blue-soft); }
+
+        /* LAYOUT */
+        .settings-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px;
+            width: 100%;
+        }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* SECTION */
+        .section {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            margin-bottom: 20px;
+            max-width: none;
+        }
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 12px;
+            margin: 0 0 18px 0;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        /* FORM ELEMENTS */
+        label.field-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        input[type="text"], input[type="number"], input[type="time"], select, textarea {
+            background: var(--bg-base);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: inherit;
+            width: 100%;
+            transition: all var(--transition);
+            outline: none;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, input[type="time"]:focus, select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px var(--accent-blue-soft);
+        }
+        input[type="range"] { width: 100%; accent-color: var(--accent-blue); cursor: pointer; }
+
+        .form-row { display: flex; gap: 14px; margin-bottom: 14px; width: 100%; }
+        .form-group { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 9px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all var(--transition);
+            border: 1px solid transparent;
+            letter-spacing: 0.3px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #1f6feb, #2d81f7); color: white; box-shadow: 0 2px 8px rgba(31,111,235,0.3); }
+        .btn-primary:hover { box-shadow: 0 4px 14px rgba(31,111,235,0.5); transform: translateY(-1px); }
+        .btn-success { background: linear-gradient(135deg, #2ea043, #3fb950); color: white; box-shadow: 0 2px 8px rgba(63,185,80,0.25); }
+        .btn-success:hover { box-shadow: 0 4px 14px rgba(63,185,80,0.4); transform: translateY(-1px); }
+        .btn-warning { background: linear-gradient(135deg, #d29922, #e3b341); color: #000; box-shadow: 0 2px 8px rgba(210,153,34,0.25); }
+        .btn-warning:hover { box-shadow: 0 4px 14px rgba(210,153,34,0.4); transform: translateY(-1px); }
+        .btn-danger-soft { background: transparent; border-color: var(--accent-red); color: var(--accent-red); }
+        .btn-danger-soft:hover { background: var(--accent-red-soft); transform: translateY(-1px); }
+        .btn-ghost { background: var(--bg-elevated); border-color: var(--border-default); color: var(--text-secondary); }
+        .btn-ghost:hover { background: var(--bg-elevated-hover); border-color: var(--border-strong); color: var(--text-primary); transform: translateY(-1px); }
+        .btn-sm { padding: 5px 12px; font-size: 10px; }
+        .btn-full { width: 100%; }
+
+        /* REMINDER LIST */
+        .reminder-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-base);
+            border: 1px solid var(--border-subtle);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 8px;
+            transition: border-color var(--transition);
+        }
+        .reminder-item:hover { border-color: var(--border-default); }
+        .reminder-time { color: var(--accent-yellow); font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .reminder-msg { color: var(--text-primary); font-size: 12px; margin-top: 3px; }
+        .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; letter-spacing: 0.4px; }
+        .badge-daily { background: var(--accent-blue); color: #0a0e14; }
+        .badge-monthly { background: var(--accent-purple); color: #0a0e14; }
+
+        /* ALARM TABLE */
+        .alarm-group-box {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .alarm-group-title {
+            font-size: 11px; font-weight: 700; color: var(--text-secondary);
+            padding: 10px 16px; margin: 0;
+            background: var(--bg-base);
+            border-bottom: 1px solid var(--border-subtle);
+            text-transform: uppercase; letter-spacing: 0.6px;
+        }
+        .alarm-row {
+            display: grid;
+            grid-template-columns: 18px 1fr 160px 110px 70px 60px 68px;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            transition: background var(--transition);
+        }
+        .alarm-row:last-child { border-bottom: none; }
+        .alarm-row:hover { background: var(--bg-elevated-hover); }
+        .alarm-row.muted { opacity: 0.38; filter: grayscale(0.8); }
+        .alarm-row-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .alarm-row-name small { display: block; font-size: 10px; color: var(--text-secondary); font-weight: 400; margin-top: 1px; }
+        .alarm-col-label { font-size: 9px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 16px 0; }
+        .alarm-col-header {
+            display: grid;
+            grid-template-columns: 18px 1fr 160px 110px 70px 60px 68px;
+            gap: 10px;
+            padding: 6px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(0,0,0,0.2);
+        }
+        .vol-display { font-size: 11px; color: var(--accent-blue); font-family: 'JetBrains Mono', monospace; font-weight: 700; min-width: 32px; text-align: right; }
+        input[type="range"].slim { height: 4px; border-radius: 2px; padding: 0; border: none; background: transparent; }
+        .num-input-sm { width: 100%; padding: 5px 8px; font-size: 11px; text-align: center; }
+        select.sel-sm { padding: 5px 8px; font-size: 11px; width: 100%; }
+
+        /* TOGGLE SWITCH */
+        .switch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--border-default); transition: .3s; border-radius: 34px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
+        .slider::before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        input:checked + .slider { background: var(--accent-green); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(63,185,80,0.3); }
+        input:checked + .slider::before { transform: translateX(16px); }
+
+        /* ACTION BAR */
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 16px 28px;
+            border-top: 1px solid var(--border-subtle);
+            background: var(--bg-base);
+            flex-shrink: 0;
+        }
+
+        /* HIDDEN TOGGLE */
+        .hidden-toggle-btn {
+            width: 100%;
+            background: var(--bg-base);
+            border: 1px dashed var(--border-default);
+            color: var(--text-secondary);
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 11px;
+            font-family: inherit;
+            transition: all var(--transition);
+            margin-bottom: 14px;
+        }
+        .hidden-toggle-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+
+        /* Color classes */
+        .c-panic { color: #f85149; }
+        .c-tkt { color: #ff7b72; }
+        .c-gen-tkt { color: var(--accent-yellow); }
+        .c-prio-new { color: var(--accent-blue); }
+        .c-gen-new { color: var(--accent-purple); }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 28px;
+            font-style: italic;
+            font-size: 12px;
+            border: 1px dashed var(--border-subtle);
+            border-radius: var(--radius-md);
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+    <span class="topbar-title">⚙️ NOC SETTINGS — Acme</span>
+    <button class="btn-close-tab" onclick="window.close()">✕ Tutup Tab</button>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('reminder', this)">⏰ Reminder</button>
+    <button class="tab-btn" onclick="switchTab('alarm', this)">🔔 Alarm</button>
+</div>
+
+<!-- CONTENT -->
+<div class="settings-body">
+
+    <!-- ============================== REMINDER TAB ============================== -->
+    <div id="tab-reminder" class="tab-pane active">
+
+        <div class="section">
+            <h4 class="section-title">➕ Buat / Edit Pengingat</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="field-label">Tipe Reminder</label>
+                    <select id="remType" onchange="toggleDateInput()">
+                        <option value="daily">Harian (Setiap Hari)</option>
+                        <option value="monthly">Bulanan (Tanggal Tertentu)</option>
+                        <option value="onetime">Satu Kali (Sekali Saja)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="remDateContainer" style="display:none;">
+                    <label class="field-label">Tanggal (1–31)</label>
+                    <input type="number" id="remDate" min="1" max="31" placeholder="Contoh: 9">
+                </div>
+                <div class="form-group">
+                    <label class="field-label">Waktu (HH:mm)</label>
+                    <input type="time" id="remTime">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="field-label">Pesan Pengingat</label>
+                <input type="text" id="remMsg" placeholder="Contoh: Jangan lupa rekap tiket dan kirim ke L2!">
+            </div>
+            <button id="btnSaveReminder" class="btn btn-success btn-full" onclick="addNewReminder()">💾 SIMPAN REMINDER</button>
+        </div>
+
+        <div class="section">
+            <h4 class="section-title">📋 Daftar Pengingat Aktif</h4>
+            <div id="reminderListContainer">
+                <div class="empty-state">Belum ada pengingat. Buat pengingat di atas.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================== ALARM TAB ============================== -->
+    <div id="tab-alarm" class="tab-pane">
+
+        <div id="alarmCardsContainer"></div>
+
+        <div class="section" style="border-style: dashed; border-color: var(--border-default);">
+            <h4 class="section-title" style="color: var(--text-secondary);">🛠️ Danger Zone</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-danger-soft" onclick="testStopSound()">🛑 Stop Suara</button>
+                <button class="btn btn-ghost" onclick="factoryResetAlarm()">⚠️ Factory Reset Alarm</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- BOTTOM ACTION BAR (only for alarm tab) -->
+<div class="action-bar" id="alarmActionBar" style="display:none;">
+    <button class="btn btn-ghost" onclick="window.close()">Batal</button>
+    <button class="btn btn-success" onclick="saveAlarmSettings()">💾 Simpan & Terapkan</button>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="page/core/alarm_engine.js"></script>
+<script>
+// ==========================================
+// TAB SWITCH
+// ==========================================
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    document.getElementById('alarmActionBar').style.display = name === 'alarm' ? 'flex' : 'none';
+    if (name === 'alarm') generateAlarmUI();
+}
+
+// ==========================================
+// REMINDER LOGIC (ported from reminder.js — reads same localStorage keys)
+// ==========================================
+let nocReminders = [];
+let editingReminderId = null;
+
+function loadReminders() {
+    const saved = localStorage.getItem('noc_reminders');
+    if (saved) nocReminders = JSON.parse(saved);
+}
+function saveReminders() {
+    localStorage.setItem('noc_reminders', JSON.stringify(nocReminders));
+}
+
+function toggleDateInput() {
+    const type = document.getElementById('remType').value;
+    document.getElementById('remDateContainer').style.display = (type === 'monthly' || type === 'onetime') ? 'flex' : 'none';
+}
+
+function renderReminderList() {
+    const container = document.getElementById('reminderListContainer');
+    if (nocReminders.length === 0) {
+        container.innerHTML = '<div class="empty-state">Belum ada pengingat yang dibuat.</div>';
+        return;
+    }
+    container.innerHTML = '';
+    nocReminders.forEach(rm => {
+        let typeBadge;
+        if (rm.type === 'daily') {
+            typeBadge = `<span class="badge badge-daily">HARIAN</span>`;
+        } else if (rm.type === 'monthly') {
+            typeBadge = `<span class="badge badge-monthly">BULANAN Tgl ${rm.date}</span>`;
+        } else {
+            typeBadge = `<span class="badge" style="background: #d29922; color: #0a0e14;">SATU KALI Tgl ${rm.date}</span>`;
+        }
+        container.insertAdjacentHTML('beforeend', `
+        <div class="reminder-item">
+            <div>
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                    <span class="reminder-time">${rm.time}</span>
+                    ${typeBadge}
+                </div>
+                <div class="reminder-msg">${rm.message}</div>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0; margin-left:12px;">
+                <button class="btn btn-warning btn-sm" onclick="editReminder('${rm.id}')">✏️ Edit</button>
+                <button class="btn btn-danger-soft btn-sm" onclick="deleteReminder('${rm.id}')">🗑️ Hapus</button>
+            </div>
+        </div>`);
+    });
+}
+
+function addNewReminder() {
+    const type = document.getElementById('remType').value;
+    const time = document.getElementById('remTime').value;
+    const date = document.getElementById('remDate').value;
+    const msg  = document.getElementById('remMsg').value.trim();
+    if (!time || !msg) { alert("Waktu dan Pesan harus diisi!"); return; }
+    if ((type === 'monthly' || type === 'onetime') && (!date || date < 1 || date > 31)) { alert("Pilih tanggal valid (1-31)."); return; }
+
+    if (editingReminderId) {
+        const idx = nocReminders.findIndex(r => r.id === editingReminderId);
+        if (idx > -1) {
+            Object.assign(nocReminders[idx], { type, time, date: (type === 'monthly' || type === 'onetime') ? parseInt(date) : null, message: msg });
+            if (type === 'onetime') nocReminders[idx].triggered = false;
+        }
+    } else {
+        nocReminders.push({ id: 'REM_' + Date.now(), type, time, date: (type === 'monthly' || type === 'onetime') ? parseInt(date) : null, message: msg, triggered: false });
+    }
+    saveReminders();
+    resetFormReminder();
+    renderReminderList();
+}
+
+function editReminder(id) {
+    const rm = nocReminders.find(r => r.id === id);
+    if (!rm) return;
+    document.getElementById('remType').value = rm.type;
+    toggleDateInput();
+    if (rm.type === 'monthly' || rm.type === 'onetime') document.getElementById('remDate').value = rm.date;
+    document.getElementById('remTime').value = rm.time;
+    document.getElementById('remMsg').value = rm.message;
+    editingReminderId = id;
+    const btn = document.getElementById('btnSaveReminder');
+    btn.textContent = '✏️ UPDATE REMINDER';
+    btn.className = 'btn btn-warning btn-full';
+}
+
+function deleteReminder(id) {
+    if (!confirm('Hapus reminder ini?')) return;
+    nocReminders = nocReminders.filter(r => r.id !== id);
+    saveReminders();
+    renderReminderList();
+}
+
+function resetFormReminder() {
+    document.getElementById('remTime').value = '';
+    document.getElementById('remMsg').value = '';
+    editingReminderId = null;
+    const btn = document.getElementById('btnSaveReminder');
+    btn.textContent = '💾 SIMPAN REMINDER';
+    btn.className = 'btn btn-success btn-full';
+}
+
+// ==========================================
+// ALARM UI — compact row layout
+// ==========================================
+function toggleCardMute(id, checked) {
+    const row = document.getElementById('row_' + id);
+    if (row) row.classList.toggle('muted', !checked);
+}
+
+function generateAlarmUI() {
+    const container = document.getElementById('alarmCardsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const colHeader = `
+    <div class="alarm-col-header">
+        <div></div>
+        <div class="alarm-col-label" style="padding:0;">Alarm</div>
+        <div class="alarm-col-label" style="padding:0;">Sound</div>
+        <div class="alarm-col-label" style="padding:0;">Volume</div>
+        <div class="alarm-col-label" style="padding:0;">Durasi</div>
+        <div class="alarm-col-label" style="padding:0;">Rep</div>
+        <div class="alarm-col-label" style="padding:0;">Test</div>
+    </div>`;
+
+    let hiddenHtml = `
+        <button class="hidden-toggle-btn" id="hiddenToggleBtn" onclick="
+            const b=document.getElementById('hiddenAlarmsBox');
+            const open=b.style.display==='none';
+            b.style.display=open?'block':'none';
+            this.textContent=open?'🙈 Sembunyikan':'👁️ Tampilkan Hidden Alarms';
+        ">👁️ Tampilkan Hidden Alarms</button>
+        <div id="hiddenAlarmsBox" style="display:none;">
+    `;
+    let hasHidden = false;
+
+    ALARM_GROUPS.forEach(group => {
+        let rowsHtml = '';
+        group.items.forEach(type => {
+            const conf = alarmConfigs[type.id];
+            let opts = '';
+            availableAlarms.forEach(f => { opts += `<option value="${f}" ${f === conf.sound ? 'selected' : ''}>${f}</option>`; });
+
+            rowsHtml += `
+            <div class="alarm-row ${conf.enabled ? '' : 'muted'}" id="row_${type.id}">
+                <label class="switch" style="margin:0;">
+                    <input type="checkbox" id="en_${type.id}" ${conf.enabled ? 'checked' : ''} onchange="toggleCardMute('${type.id}', this.checked)">
+                    <span class="slider"></span>
+                </label>
+                <div class="alarm-row-name ${type.cls}">${type.title}</div>
+                <select class="sel-sm" id="sel_${type.id}">${opts}</select>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <input type="range" class="slim" id="vol_${type.id}" min="0.1" max="1" step="0.1" value="${conf.vol}"
+                        oninput="document.getElementById('volL_${type.id}').textContent=Math.round(this.value*100)+'%'" style="flex:1; margin:0;">
+                    <span class="vol-display" id="volL_${type.id}">${Math.round(conf.vol * 100)}%</span>
+                </div>
+                <input type="number" class="num-input-sm" id="dur_${type.id}" min="0.5" max="30" step="0.5" value="${conf.dur}" title="Durasi detik">
+                <input type="number" class="num-input-sm" id="rep_${type.id}" min="1" max="10" step="1" value="${conf.rep}" title="Repeat">
+                <button class="btn btn-primary btn-sm" onclick="testAlarmPlayback('${type.id}')">▶ Test</button>
+            </div>`;
+        });
+
+        const boxHtml = `
+        <div class="alarm-group-box">
+            <h4 class="alarm-group-title">${group.title}</h4>
+            ${colHeader}
+            ${rowsHtml}
+        </div>`;
+
+        if (group.isHiddenGroup) { hiddenHtml += boxHtml; hasHidden = true; }
+        else container.insertAdjacentHTML('beforeend', boxHtml);
+    });
+
+    if (hasHidden) {
+        hiddenHtml += '</div>';
+        container.insertAdjacentHTML('beforeend', hiddenHtml);
+    }
+    _buildCustomAlarmSection(container);
+}
+
+function saveAlarmSettings() {
+    ALARM_IDS.forEach(id => {
+        alarmConfigs[id] = {
+            enabled: document.getElementById(`en_${id}`).checked,
+            sound:   document.getElementById(`sel_${id}`).value,
+            vol:     parseFloat(document.getElementById(`vol_${id}`).value),
+            dur:     parseFloat(document.getElementById(`dur_${id}`).value),
+            rep:     parseInt(document.getElementById(`rep_${id}`).value)
+        };
+    });
+        if (typeof generateAlarmUI === 'function') generateAlarmUI();
+    localStorage.setItem('noc_alarm_vGrouped', JSON.stringify(alarmConfigs));
+    customAlarmRules.forEach(rule => {
+        if (!document.getElementById(`cip_${rule.id}`)) return;
+        rule.ip = document.getElementById(`cip_${rule.id}`).value.trim() || rule.ip;
+        rule.metric = document.getElementById(`cmet_${rule.id}`).value || rule.metric;
+        rule.threshold = parseFloat(document.getElementById(`cthr_${rule.id}`).value) || rule.threshold;
+        rule.sound = document.getElementById(`csel_${rule.id}`).value || rule.sound;
+        rule.vol = parseFloat(document.getElementById(`cvol_${rule.id}`).value) || rule.vol;
+        rule.dur = parseFloat(document.getElementById(`cdur_${rule.id}`).value) || rule.dur;
+        rule.rep = parseInt(document.getElementById(`crep_${rule.id}`).value) || rule.rep;
+    });
+    saveCustomAlarmRulesStorage();
+    const btn = document.querySelector('#alarmActionBar .btn-success');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Tersimpan!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+}
+
+function testStopSound() { forceStopAlarm(); }
+
+// ==========================================
+// INIT
+// ==========================================
+loadReminders();
+renderReminderList();
+fetchAlarmList();
+</script>
+</body>
+</html>

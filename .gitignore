@@ -1,0 +1,32 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Node
+node_modules/
+
+# Sensitive / raw data (do NOT commit)
+Data_JSON/RVTOOLS/*.csv
+Data_JSON/RVTOOLS/*.xlsx
+Data_JSON/grafana/raw_disk_*.json
+Data_JSON/kibana/kibana_raw*.json
+Data_JSON/*_temp.json
+Data_JSON/localstorage_backup.txt
+Data_JSON/eos_config.json
+
+# Backend scripts (not part of static site)
+*.py
+itsm_proxy.js
+grafana_proxy.js
+*.bat
+*.ps1
+
+# Cache / backup
+.sharepoint_cache/
+backup/
+.claude/
+
+# Temp
+${m}m

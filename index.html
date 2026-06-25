@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>NOC Master Dashboard</title>
+        <!-- Favicon emoji 📡 inline (SVG) — ikon tab tanpa file .ico, sekaligus hilangkan 404 favicon -->
+        <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22&gt;&lt;text y=%22.9em%22 font-size=%2290%22&gt;📡&lt;/text&gt;&lt;/svg&gt;">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+        <!-- Console In-App: dimuat PALING AWAL agar menangkap error dari semua script di bawahnya -->
+        <script src="page/tools/console_modal.js"></script>
+
+        <script src="page/grafana/history_log.js"></script>
+        <script src="page/grafana/history_ticket.js"></script>
+        <script src="page/grafana/grafana_action.js"></script>
+        <script src="page/grafana/grafana_ui.js"></script>
+        <script src="Data_JSON/opmanager_data.js"></script>
+        <script src="Data_JSON/panic_data.js"></script>
+        <script>
+        // Apply panic dots immediately when DOM ready — self-contained, no dependency on alarm_engine
+        (function() {
+            function _setDot(id, s) {
+                var el = document.getElementById(id); if (!el) return;
+                el.className = 'status-dot ' + (s === 'Up' ? 'dot-up' : (!s || s === 'N/A') ? 'dot-unknown' : 'dot-down');
+            }
+            function _tryApply() {
+                var p1 = window.panicData1, p2 = window.panicData2;
+                if (!p1 || !p2) return;
+                _setDot('dot-SITE-A-adm', p1.adminState); _setDot('dot-SITE-A-opr', p1.operState);
+                _setDot('dot-SITE-B-adm', p2.adminState); _setDot('dot-SITE-B-opr', p2.operState);
+            }
+            document.addEventListener('DOMContentLoaded', _tryApply);
+            window.addEventListener('load', _tryApply);
+            window._reapplyPanicDots = _tryApply;
+        })();
+        </script>
+        <script src="page/opmanager/opm_action.js"></script>
+        <script src="page/opmanager/history_opmanager.js"></script>
+        <script src="page/opmanager/opm_ui.js"></script>
+        <script src="page/tools/dynatrace_scraper.js"></script>
+        <script src="page/tools/host_availability_scraper.js"></script>
+        <script src="page/modals/unified_ticket.js"></script>
+        <script src="src/lib/html2canvas.min.js"></script>
+        <script src="page/tools/ip_checker.js"></script>
+        <script src="page/core/shift_notes.js"></script>
+        <script src="page/core/notification.js"></script>
+        <script src="page/core/alarm_engine.js"></script>
+        <script src="page/modals/panic_modal.js"></script>
+        <script src="page/tools/ticket_verifier.js"></script>
+        <script src="page/tools/fu_pagi.js"></script>
+        <script src="page/tools/fu_itsm.js"></script>
+        <script src="page/tools/docs_modal.js"></script>
+        <script src="page/modals/schedule_modal.js"></script>
+        <script src="page/modals/schedule_algorithm.js"></script>
+        <script src="page/core/export_report.js"></script>
+        <script src="src/lib/exceljs.min.js"></script>
+        <script src="page/tools/eos_report.js"></script>
+        <script src="page/tools/fu_unified.js"></script>
+        <script src="page/grafana/asset_modal.js"></script>
+        <script src="page/grafana/grafana_launcher.js"></script>
+        <script src="page/core/reminder.js"></script> <!-- SCRIPT REMINDER -->
+
+        <style>
+            /* ===== MATERIAL MODERN CLEAN - DESIGN TOKENS ===== */
+            :root {
+                --bg-base: #0a0e14;
+                --bg-surface: #11161d;
+                --bg-elevated: #161c25;
+                --bg-elevated-hover: #1c2330;
+                --border-subtle: #21262d;
+                --border-default: #30363d;
+                --border-strong: #484f58;
+                --text-primary: #f0f6fc;
+                --text-secondary: #8b949e;
+                --text-tertiary: #6e7681;
+                --accent-blue: #58a6ff;
+                --accent-blue-soft: rgba(88, 166, 255, 0.12);
+                --accent-blue-hover: rgba(88, 166, 255, 0.2);
+                --accent-green: #3fb950;
+                --accent-yellow: #f1e05a;
+                --accent-red: #f85149;
+                --accent-red-soft: rgba(248, 81, 73, 0.1);
+                --accent-purple: #d2a8ff;
+                --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+                --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+                --shadow-lg: 0 12px 28px rgba(0,0,0,0.5);
+                --radius-sm: 6px;
+                --radius-md: 8px;
+                --radius-lg: 12px;
+                --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            body {
+                background: var(--bg-base);
+                color: var(--text-primary);
+                font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+                margin: 0;
+                overflow: hidden;
+                font-feature-settings: 'cv11', 'ss01';
+                -webkit-font-smoothing: antialiased;
+                /* Layout kolom: header (tinggi adaptif) + grid mengisi sisa ruang.
+                   Tidak lagi bergantung pada angka tinggi header yang di-hardcode. */
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* ===== HEADER MODERN ===== */
+            .master-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 6px 16px;
+                background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-base) 100%);
+                border-bottom: 1px solid var(--border-subtle);
+                min-height: 56px;
+                flex-shrink: 0;            /* header tak ikut menyusut, grid yang mengisi sisa */
+                box-shadow: var(--shadow-sm);
+                gap: 8px 12px;
+                /* Membungkus OTOMATIS saat isi tak muat — di lebar/zoom berapa pun.
+                   Tidak bergantung breakpoint angka, jadi tak ada elemen yang hilang
+                   atau scroll kiri-kanan. Tinggi header menyesuaikan jumlah baris. */
+                flex-wrap: wrap;
+                overflow: visible;
+            }
+
+            /* Tiap sisi boleh membungkus isinya sendiri bila perlu, dan masih boleh
+               melebar memenuhi baris saat ia turun ke baris berikutnya. */
+            .header-section {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                row-gap: 6px;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            /* Bagian kanan (kontrol penting: Tools/TICKETS/PANIC/STOP) tetap rata kanan
+               saat masih sebaris, dan saat turun ke baris bawah ia memenuhi lebar penuh. */
+            .master-header > .header-section:last-child { justify-content: flex-end; }
+
+            /* Elemen header TIDAK menyusut: kalau tak muat, ia membungkus utuh ke baris
+               berikutnya — bukan terkompres/terpotong. Ini yang menjaga PANIC dkk. utuh. */
+            .header-section > .tool-group,
+            .header-section > .btn-ticket,
+            .header-section > .btn-danger,
+            .header-section > .tools-dropdown-wrap,
+            .stats-collapsible > .tool-group {
+                flex-shrink: 0;
+            }
+
+            /* ===== TOOLS DROPDOWN ===== */
+            .tools-dropdown-wrap { position: relative; flex-shrink: 0; }
+            .tools-dropdown-btn {
+                background: var(--bg-elevated);
+                border: 1px solid var(--border-default);
+                color: var(--text-primary);
+                padding: 6px 14px;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+                font-family: inherit;
+                height: 32px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                transition: all var(--transition);
+                letter-spacing: 0.2px;
+            }
+            .tools-dropdown-btn:hover { background: var(--bg-elevated-hover); border-color: var(--border-strong); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+            .tools-dropdown-btn.active { border-color: var(--accent-blue); background: var(--accent-blue-soft); color: var(--accent-blue); }
+            .tools-dropdown-panel {
+                display: none;
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 0;
+                background: var(--bg-surface);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-lg);
+                min-width: 190px;
+                z-index: 9999;
+                overflow: hidden;
+                padding: 4px 0;
+            }
+            .tools-dropdown-panel.open { display: block; }
+            .tools-dd-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 16px;
+                font-size: 12px;
+                font-weight: 500;
+                color: var(--text-primary);
+                cursor: pointer;
+                transition: background var(--transition);
+                border: none;
+                background: transparent;
+                width: 100%;
+                text-align: left;
+                font-family: inherit;
+                height: auto;
+                letter-spacing: 0;
+                border-radius: 0;
+                box-shadow: none;
+                transform: none !important;
+            }
+            .tools-dd-item:hover { background: var(--bg-elevated-hover); transform: none !important; box-shadow: none !important; }
+            .tools-dd-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+            .tools-dd-divider { height: 1px; background: var(--border-subtle); margin: 4px 0; }
+
+/* ===== STATS COLLAPSIBLE ===== */
+            .stats-toggle-btn {
+                background: transparent; border: none;
+                color: var(--text-tertiary); font-size: 14px;
+                cursor: pointer; padding: 2px 4px; border-radius: 4px;
+                height: auto; line-height: 1;
+                transition: all var(--transition); flex-shrink: 0;
+            }
+            .stats-toggle-btn:hover { color: var(--text-secondary); background: rgba(255,255,255,0.05); transform: none !important; box-shadow: none !important; }
+            .stats-collapsible { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; row-gap: 6px; }
+            .stats-collapsible.collapsed { display: none; }
+
+            /* ===== GRAFANA ICON BUTTON ===== */
+            .btn-grafana-icon {
+                background: #0d1117;
+                border: 1px dashed #58a6ff;
+                color: #58a6ff;
+                width: 32px; height: 32px;
+                padding: 0;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                transition: all var(--transition);
+                flex-shrink: 0;
+            }
+            .btn-grafana-icon:hover { background: rgba(88,166,255,0.1); border-style: solid; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(88,166,255,0.25); }
+
+            /* ===== TOOL GROUPS - ELEVATED CARDS ===== */
+            .tool-group {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: var(--bg-elevated);
+                padding: 6px 12px;
+                border-radius: var(--radius-md);
+                border: 1px solid var(--border-subtle);
+                height: 32px;
+                box-shadow: var(--shadow-sm);
+                transition: border-color var(--transition);
+            }
+            .tool-group:hover { border-color: var(--border-default); }
+            .tool-group-alert {
+                background: linear-gradient(135deg, rgba(248,81,73,0.05), var(--bg-elevated));
+                border-color: rgba(248,81,73,0.25);
+            }
+
+            /* ===== STATISTIK MODERN ===== */
+            .stat-node { display: flex; gap: 6px; align-items: center; }
+            .stat-label {
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.6px;
+            }
+            .stat-value {
+                color: var(--accent-blue);
+                font-weight: 700;
+                font-family: 'JetBrains Mono', 'Consolas', monospace;
+                font-size: 13px;
+            }
+
+            /* ===== INPUT & SELECT MODERN ===== */
+            .search-box {
+                background: var(--bg-base);
+                border: 1px solid var(--border-default);
+                color: var(--text-primary);
+                padding: 6px 12px;
+                border-radius: var(--radius-sm);
+                font-size: 11px;
+                width: 110px;
+                transition: all var(--transition);
+                outline: none;
+                height: 20px;
+                font-family: inherit;
+            }
+            .search-box::placeholder { color: var(--text-tertiary); }
+            .search-box:focus {
+                border-color: var(--accent-blue);
+                width: 160px;
+                box-shadow: 0 0 0 3px var(--accent-blue-soft);
+            }
+
+            /* ===== BUTTON MODERN ===== */
+            select, button {
+                background: var(--bg-elevated);
+                color: var(--text-primary);
+                border: 1px solid var(--border-default);
+                padding: 6px 14px;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+                font-family: inherit;
+                transition: all var(--transition);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                height: 32px;
+                letter-spacing: 0.2px;
+            }
+            button:hover {
+                background: var(--bg-elevated-hover);
+                border-color: var(--border-strong);
+                transform: translateY(-1px);
+                box-shadow: var(--shadow-md);
+            }
+            button:active {
+                transform: translateY(0) scale(0.97);
+                box-shadow: var(--shadow-sm);
+            }
+            select {
+                height: 32px;
+                cursor: pointer;
+            }
+            select:hover { border-color: var(--border-strong); }
+            select:focus {
+                outline: none;
+                border-color: var(--accent-blue);
+                box-shadow: 0 0 0 3px var(--accent-blue-soft);
+            }
+
+            /* ===== CUSTOM BUTTON COLORS - MATERIAL FILLED ===== */
+            .btn-ticket {
+                background: linear-gradient(135deg, #f1e05a, #ddc835);
+                border: none;
+                color: #0a0e14;
+                font-weight: 700;
+                box-shadow: 0 2px 8px rgba(241, 224, 90, 0.25);
+            }
+            .btn-ticket:hover {
+                background: linear-gradient(135deg, #ffe961, #e6d23a);
+                box-shadow: 0 4px 14px rgba(241, 224, 90, 0.4);
+            }
+            .btn-danger {
+                background: linear-gradient(135deg, #da3633, #b62324);
+                border: none;
+                color: white;
+                font-weight: 700;
+                box-shadow: 0 2px 8px rgba(218, 54, 51, 0.3);
+            }
+            .btn-danger:hover {
+                background: linear-gradient(135deg, #f04742, #c62826);
+                box-shadow: 0 4px 14px rgba(218, 54, 51, 0.5);
+            }
+            
+            /* ===== GRID LAYAR BAWAH ===== */
+            .master-grid {
+                display: grid;
+                grid-template-columns: repeat(10, 1fr);
+                grid-template-rows: 1fr 1fr;
+                flex: 1 1 auto;           /* mengisi sisa tinggi setelah header, berapa pun tingginya */
+                min-height: 0;            /* agar grid boleh menyusut di dalam flex container */
+                gap: 1px;
+                background: var(--border-subtle);
+            }
+            .window {
+                background: var(--bg-base);
+                position: relative;
+                overflow: hidden;
+            }
+            .wide { grid-column: span 2; }
+
+            /* ===== KIBANA NOTIFICATION BADGE ===== */
+            .kibana-notif-badge {
+                background: linear-gradient(135deg, #e5534b, #d63839);
+                border: 1px solid #e5534b;
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+                transition: all var(--transition);
+                flex-shrink: 0;
+                animation: notifPulse 2s infinite;
+            }
+            .kibana-notif-badge:hover {
+                transform: scale(1.05);
+                box-shadow: 0 0 12px rgba(229, 83, 75, 0.5);
+            }
+            @keyframes notifPulse {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(229, 83, 75, 0.7); }
+                50% { box-shadow: 0 0 0 6px rgba(229, 83, 75, 0); }
+            }
+
+            iframe { width: 100%; height: 100%; border: none; }
+            .tag { display: none; }
+
+            /* ===== PANIC BUTTON MODERN ===== */
+            .panic-btn-container {
+                display: flex;
+                align-items: center;
+                background: transparent;
+                border: none;
+                padding: 4px 10px;
+                font-size: 11px;
+                font-weight: 600;
+                color: var(--text-primary);
+                cursor: pointer;
+                user-select: none;
+                border-radius: var(--radius-sm);
+                transition: background var(--transition);
+            }
+            .panic-btn-container:hover { background: rgba(248,81,73,0.08); }
+            .panic-title {
+                color: var(--accent-red);
+                margin-right: 8px;
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                font-weight: 700;
+            }
+            .panic-site { display: flex; align-items: center; gap: 4px; margin: 0 6px; font-weight: 500; }
+            .panic-divider { color: var(--border-default); }
+            .status-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                display: inline-block;
+                box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+            }
+            .dot-up { background-color: var(--accent-green); box-shadow: 0 0 6px rgba(63, 185, 80, 0.6); }
+            .dot-down { background-color: var(--accent-red); box-shadow: 0 0 10px rgba(248, 81, 73, 0.7); animation: pulseRed 1s infinite; }
+            .dot-unknown { background-color: var(--text-secondary); }
+            @keyframes pulseRed { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.3); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
+            @keyframes bgPanicBlink { 0%, 100% { background-color: rgba(248, 81, 73, 0.18); } 50% { background-color: transparent; } }
+            .panic-alert-bg { animation: bgPanicBlink 1.5s infinite !important; border-radius: var(--radius-sm); }
+
+            /* ===== ICON BUTTONS (Settings/Mute/Notes/etc) ===== */
+            .tool-group button[style*="background: transparent"],
+            .tool-group button[style*="background:transparent"] {
+                border-radius: var(--radius-sm) !important;
+                transition: all var(--transition) !important;
+                width: auto;
+                padding: 6px 10px !important;
+            }
+            .tool-group button[style*="transparent"]:hover {
+                background: rgba(255,255,255,0.06) !important;
+                transform: translateY(-1px);
+            }
+
+            /* H4 BRAND HEADER */
+            .master-header h4 {
+                font-weight: 700;
+                background: linear-gradient(135deg, #58a6ff, #d2a8ff);
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+                font-size: 14px !important;
+                letter-spacing: 0.5px !important;
+            }
+
+            /* CHECKBOX LABEL MASTER FILTER */
+            .tool-group label {
+                color: var(--text-secondary);
+                font-size: 11px;
+                gap: 6px;
+            }
+
+            /* ===== MODAL MODERN ===== */
+            .modal-overlay {
+                display: none;
+                position: fixed;
+                top: 0; left: 0;
+                width: 100vw; height: 100vh;
+                background: rgba(0,0,0,0.7);
+                z-index: 20000;
+                justify-content: center;
+                align-items: center;
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+            }
+            .modal-box {
+                background: linear-gradient(180deg, var(--bg-surface), var(--bg-base));
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-lg);
+                width: 600px;
+                max-height: 90vh;
+                overflow-y: auto;
+                padding: 28px;
+                box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.03) inset;
+                font-family: 'Inter', system-ui, sans-serif;
+            }
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid var(--border-subtle);
+                padding-bottom: 16px;
+                margin-bottom: 22px;
+            }
+            .modal-title {
+                color: var(--accent-yellow);
+                font-weight: 700;
+                font-size: 16px;
+                letter-spacing: 0.5px;
+            }
+            .modal-close {
+                background: transparent;
+                border: none;
+                color: var(--accent-red);
+                font-size: 22px;
+                cursor: pointer;
+                padding: 4px 10px;
+                border-radius: var(--radius-sm);
+                transition: all var(--transition);
+                height: auto;
+            }
+            .modal-close:hover {
+                background: var(--accent-red-soft);
+                transform: rotate(90deg);
+            }
+            
+            /* ===== ALARM CARD MODERN ===== */
+            .alarm-card {
+                background: var(--bg-elevated);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-md);
+                padding: 16px;
+                margin-bottom: 14px;
+                transition: all var(--transition);
+            }
+            .alarm-card:hover { border-color: var(--border-default); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+            .alarm-card.muted { opacity: 0.4; filter: grayscale(0.9); }
+            .card-header { font-weight: 700; font-size: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+            .ch-panic { color: var(--accent-red); }
+            .ch-prio-tkt { color: #ff7b72; }
+            .ch-gen-tkt { color: var(--accent-yellow); }
+            .ch-prio-new { color: var(--accent-blue); }
+            .ch-gen-new { color: var(--accent-purple); }
+            .form-row { display: flex; gap: 14px; margin-bottom: 12px; }
+            .form-group { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+            .form-group label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+            .form-group input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent-blue); }
+            .form-group input[type="number"], .form-group select {
+                background: var(--bg-base);
+                color: var(--text-primary);
+                border: 1px solid var(--border-default);
+                padding: 8px 10px;
+                border-radius: var(--radius-sm);
+                font-size: 12px;
+                width: 100%;
+                box-sizing: border-box;
+                transition: all var(--transition);
+                height: auto;
+            }
+            .form-group input[type="number"]:focus, .form-group select:focus {
+                outline: none;
+                border-color: var(--accent-blue);
+                box-shadow: 0 0 0 3px var(--accent-blue-soft);
+            }
+
+            /* ===== TOGGLE SWITCH MODERN ===== */
+            .switch { position: relative; display: inline-block; width: 38px; height: 22px; }
+            .switch input { opacity: 0; width: 0; height: 0; }
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background-color: var(--border-default);
+                transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+                border-radius: 34px;
+                box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+            }
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 16px; width: 16px;
+                left: 3px; bottom: 3px;
+                background-color: white;
+                transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+                border-radius: 50%;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            }
+            input:checked + .slider {
+                background-color: var(--accent-green);
+                box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(63, 185, 80, 0.3);
+            }
+            input:checked + .slider:before { transform: translateX(16px); }
+
+            .modal-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 12px;
+                margin-top: 28px;
+                border-top: 1px solid var(--border-subtle);
+                padding-top: 18px;
+                position: sticky;
+                bottom: -28px;
+                background: var(--bg-base);
+                padding-bottom: 22px;
+            }
+
+            /* ===== CHECKBOX CUSTOM UNTUK EXPORT ===== */
+            .export-cb-label {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                background: var(--bg-elevated);
+                padding: 12px 16px;
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-md);
+                cursor: pointer;
+                transition: all var(--transition);
+                margin-bottom: 8px;
+            }
+            .export-cb-label:hover {
+                border-color: var(--accent-blue);
+                background: var(--bg-elevated-hover);
+                transform: translateX(2px);
+            }
+            .export-cb-label input { cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent-blue); }
+            .export-cb-text { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+            .export-cb-desc { font-size: 10px; color: var(--text-secondary); margin-left: auto; font-style: italic; }
+            
+            /* ANIMASI UNTUK POP-UP REMINDER */
+            @keyframes pulseBlue {
+                0% { box-shadow: 0 0 20px rgba(88,166,255,0.4); }
+                50% { box-shadow: 0 0 50px rgba(88,166,255,0.8); }
+                100% { box-shadow: 0 0 20px rgba(88,166,255,0.4); }
+            }
+
+            /* ===== RESPONSIVE MOBILE ===== */
+            @media (max-width: 768px) {
+                body {
+                    overflow-y: auto;
+                    height: auto;
+                    min-height: 100vh;
+                    flex-direction: column;
+                }
+
+                /* Header: lebih compact, stacked 2 baris */
+                .master-header {
+                    padding: 8px 12px;
+                    min-height: auto;
+                    gap: 6px 8px;
+                }
+
+                /* Sembunyikan elemen header yang tidak esensial di mobile */
+                .stats-collapsible,
+                .stats-toggle-btn,
+                #ipSearch,
+                #masterFilter,
+                .show-healthy-label,
+                #headerClock,
+                #muteBtn,
+                .btn-danger,
+                .panic-btn-container {
+                    display: none !important;
+                }
+
+                /* Header section jadi penuh lebar */
+                .header-section {
+                    flex: 1 1 100%;
+                    justify-content: space-between !important;
+                }
+
+                /* Grid: 1 kolom, scroll vertikal, tiap panel tinggi layar */
+                .master-grid {
+                    display: flex;
+                    flex-direction: column;
+                    flex: none;
+                    background: var(--bg-base);
+                    gap: 2px;
+                }
+
+                /* Tiap panel: tinggi 85vw (hampir kotak, scroll sendiri) */
+                .window {
+                    height: 85vw;
+                    min-height: 280px;
+                    max-height: 420px;
+                }
+
+                /* Override semua grid-column span → full width */
+                .window[style*="grid-column"] {
+                    width: 100% !important;
+                }
+
+                /* Label panel tampil di mobile */
+                .tag {
+                    display: block !important;
+                    position: absolute;
+                    top: 0; left: 0; right: 0;
+                    z-index: 10;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 3px 8px;
+                    background: #1f6feb;
+                    color: #fff;
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase;
+                }
+
+                /* iframe mulai di bawah tag */
+                iframe {
+                    position: absolute;
+                    top: 22px;
+                    left: 0;
+                    width: 100%;
+                    height: calc(100% - 22px);
+                }
+
+                /* Tombol TICKETS lebih kecil */
+                .btn-ticket {
+                    font-size: 11px;
+                    padding: 5px 10px;
+                }
+
+                .tools-dropdown-btn {
+                    font-size: 11px;
+                    padding: 5px 10px;
+                }
+            }
+
+            /* Tablet landscape: 2 kolom grid */
+            @media (min-width: 769px) and (max-width: 1024px) {
+                body {
+                    overflow-y: auto;
+                    height: auto;
+                    min-height: 100vh;
+                }
+
+                .master-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    grid-template-rows: none;
+                    flex: none;
+                }
+
+                .window[style*="grid-column"] {
+                    grid-column: span 1 !important;
+                }
+
+                .window {
+                    height: 45vw;
+                    min-height: 300px;
+                }
+
+                iframe {
+                    width: 100%;
+                    height: 100%;
+                    position: static;
+                }
+
+                .tag { display: none; }
+            }
+        </style>
+    </head>
+    <body>
+    <div class="master-header">
+
+        <!-- LEFT SECTION: Brand + Stats -->
+        <div class="header-section">
+            <h4 style="margin:0; font-size: 13px; letter-spacing: 1px; color: #c9d1d9; flex-shrink:0;">📡 NOC Dashboard</h4>
+
+            <!-- Stats toggle button -->
+            <button class="stats-toggle-btn" id="statsToggleBtn" onclick="toggleStats()" title="Show/Hide Stats">◀</button>
+
+            <!-- Collapsible stats -->
+            <div class="stats-collapsible" id="statsCollapsible">
+                <div class="tool-group">
+                    <div class="stat-node"><span class="stat-label">V1:</span><span id="total-v1" class="stat-value">0</span></div>
+                    <div class="stat-node"><span class="stat-label">V2:</span><span id="total-v2" class="stat-value">0</span></div>
+                    <div class="stat-node"><span class="stat-label">APP:</span><span id="total-app" class="stat-value">0</span></div>
+                    <div style="border-left: 1px solid #30363d; height: 12px; margin: 0 2px;"></div>
+                    <div class="stat-node" title="Total Seluruh IP"><span class="stat-label">ALL:</span><span id="total-ip-master" class="stat-value" style="color:#c9d1d9;">0</span></div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RIGHT SECTION: Controls -->
+        <div class="header-section">
+
+            <div class="tool-group" style="background: transparent; border: none; padding: 0;">
+                <!-- Grafana logo icon button -->
+                <button class="btn-grafana-icon" onclick="openStandaloneGrafanaLauncher()" title="Buka IP di Grafana Asli">
+                    <svg width="18" height="18" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="32" cy="32" r="30" fill="none" stroke="#58a6ff" stroke-width="3"/>
+                        <path d="M32 14C22.06 14 14 22.06 14 32C14 41.94 22.06 50 32 50C38.84 50 44.78 46.22 47.98 40.6L42.6 37.52C40.42 41.38 36.52 44 32 44C25.38 44 20 38.62 20 32C20 25.38 25.38 20 32 20C35.78 20 39.14 21.72 41.4 24.46L36 27.5L50 30L46.5 16.5L41.72 19.24C38.64 16.04 34.54 14 32 14Z" fill="#58a6ff"/>
+                    </svg>
+                </button>
+                <input type="text" id="ipSearch" class="search-box" placeholder="🔍 Cari IP..." onkeyup="broadcast()">
+                <select id="masterFilter" onchange="broadcast()">
+                    <option value="all">Filter: All</option>
+                    <option value="v1">V1</option>
+                    <option value="v2">V2</option>
+                    <option value="app_level">App-Level</option>
+                    <option value="priority">⭐ Priority</option>
+                    <option value="unfilter">🌐 Unfilter</option>
+                </select>
+                <label class="show-healthy-label" style="cursor:pointer; font-size:10px; display:flex; align-items:center; gap:3px; margin-left: 2px;">
+                    <input type="checkbox" id="masterShowOk" checked onchange="broadcast()" style="margin:0;"> Show Healthy
+                </label>
+            </div>
+
+            <!-- Tools dropdown (panel is in body, positioned via JS) -->
+            <div class="tools-dropdown-wrap" id="toolsDropWrap">
+                <button class="tools-dropdown-btn" id="toolsDropBtn" onclick="toggleToolsDropdown()" title="Tools & Menu">
+                    🛠️ Tools <span style="font-size:9px; opacity:0.7;">▼</span>
+                </button>
+            </div>
+
+            <button class="btn-ticket" onclick="openUnifiedTicket()">🎫 TICKETS</button>
+
+            <div id="headerClock" style="
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                font-weight: 700;
+                color: #c9d1d9;
+                background: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 4px;
+                padding: 3px 10px;
+                letter-spacing: 1px;
+                white-space: nowrap;
+                user-select: none;
+            ">00:00:00</div>
+
+            <div class="tool-group tool-group-alert">
+                <div id="panicBtnBox" class="panic-btn-container" title="Klik untuk Eskalasi WA" onclick="openPanicModal()">
+                    <span class="panic-title">PANIC</span>
+                    <div class="panic-site"><span>SITE-A</span><span id="dot-SITE-A-adm" class="status-dot dot-unknown"></span><span id="dot-SITE-A-opr" class="status-dot dot-unknown"></span></div>
+                    <span class="panic-divider">|</span>
+                    <div class="panic-site"><span>SITE-B</span><span id="dot-SITE-B-adm" class="status-dot dot-unknown"></span><span id="dot-SITE-B-opr" class="status-dot dot-unknown"></span></div>
+                </div>
+
+                <div style="border-left: 1px solid #da363344; height: 16px; margin: 0 2px;"></div>
+
+                <button id="muteBtn" onclick="toggleGlobalMute()" title="Alarm AKTIF — klik untuk mute" style="background: transparent; border:none; padding: 2px 6px; font-size: 13px; color:#3fb950; font-weight:700; white-space:nowrap;">🔊 ON</button>
+                <button class="btn-danger" onclick="forceStopAlarm()">🛑 STOP</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="master-grid">
+        <div class="window" style="grid-column:span 4;"><span class="tag">Network Availability</span><iframe src="page/grafana/availability.html"></iframe></div>
+        <div class="window" style="grid-column:span 2;"><span class="tag" style="background:#1a6b3a;">Disk Usage</span><iframe src="page/grafana/disk_monitor.html"></iframe></div>
+        <div class="window" style="grid-column:span 4;"><span class="tag" style="background:#da3633;">Kibana Transaksi</span><iframe src="page/kibana/channel_merah.html"></iframe></div>
+        <div class="window" style="grid-column:span 4;"><span class="tag" style="background:#1f6feb;">CPU Performance</span><iframe src="page/grafana/cpu_monitor.html"></iframe></div>
+        <div class="window" style="grid-column:span 2;"><span class="tag" style="background:#6e40c9;">OpManager Alarm</span><iframe src="page/opmanager/opm_widget.html"></iframe></div>
+        <div class="window" style="grid-column:span 4;"><span class="tag" style="background:#8957e5;">Memory Usage</span><iframe src="page/grafana/memory_monitor.html"></iframe></div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- MODAL DISK DETAIL -->
+    <!-- ========================================== -->
+    <div id="diskDetailModal" style="
+        display:none; position:fixed; inset:0; z-index:9999;
+        background:rgba(0,0,0,0.8);
+        align-items:center; justify-content:center;
+    " onclick="closeDiskModal(event)">
+        <div style="
+            background:#161c25; border:1px solid #30363d; border-radius:8px;
+            width:80%; max-width:900px; max-height:85vh;
+            display:flex; flex-direction:column;
+            box-shadow:0 16px 48px rgba(0,0,0,0.7);
+            font-family:'Inter',system-ui,sans-serif;
+        ">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #21262d;flex-shrink:0;">
+                <span style="background:#1a6b3a;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;">Disk Usage</span>
+                <span style="font-size:11px;font-weight:700;color:#f0f6fc;">Detail — 4 jam terakhir</span>
+                <span id="diskModalSub" style="font-size:10px;color:#6e7681;"></span>
+                <button onclick="downloadDiskDetailXlsx()" style="margin-left:auto;background:#1a6b3a;border:none;color:#fff;font-size:10px;font-weight:700;padding:4px 12px;border-radius:4px;cursor:pointer;letter-spacing:0.4px;">⬇ Download Excel</button>
+                <button onclick="document.getElementById('diskDetailModal').style.display='none'" style="background:none;border:none;color:#6e7681;font-size:20px;line-height:1;cursor:pointer;padding:0 4px;">&times;</button>
+            </div>
+            <div style="flex:1;overflow-y:auto;">
+                <table id="diskDetailTbl" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+                    <colgroup>
+                        <col style="width:23%">
+                        <col style="width:33%">
+                        <col style="width:11%">
+                        <col style="width:11%">
+                        <col style="width:11%">
+                        <col style="width:11%">
+                    </colgroup>
+                    <thead>
+                        <tr style="background:#0d1117;position:sticky;top:0;">
+                            <th style="padding:6px 10px;text-align:left;font-size:9px;color:#6e7681;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #30363d;border-right:1px solid #21262d;">IP / Host</th>
+                            <th style="padding:6px 10px;text-align:left;font-size:9px;color:#6e7681;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #30363d;border-right:1px solid #21262d;">Mount</th>
+                            <th style="padding:6px 10px;text-align:right;font-size:9px;color:#6e7681;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #30363d;border-right:1px solid #21262d;">Min</th>
+                            <th style="padding:6px 10px;text-align:right;font-size:9px;color:#6e7681;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #30363d;border-right:1px solid #21262d;">Mean</th>
+                            <th style="padding:6px 10px;text-align:right;font-size:9px;color:#6e7681;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #30363d;border-right:1px solid #21262d;">Max</th>
+                            <th style="padding:6px 10px;text-align:right;font-size:9px;color:#6e7681;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #30363d;">Last</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diskDetailBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL SETTINGS REMINDER -->
+    <!-- ========================================== -->
+    <div id="reminderSettingsModal" class="modal-overlay">
+        <div class="modal-box" style="width: 550px;">
+            <div class="modal-header">
+                <span class="modal-title">⏰ REMINDER SETTINGS</span>
+                <button class="modal-close" onclick="closeReminderSettings()">&times;</button>
+            </div>
+            
+            <div style="background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+                <h4 style="margin-top: 0; color: #58a6ff; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 10px;">➕ BUAT PENGINGAT BARU</h4>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 10px; color: #8b949e; font-weight: bold;">TIPE REMINDER</label>
+                        <select id="remType" onchange="toggleDateInput()" style="background: #010409; color: #c9d1d9; border: 1px solid #30363d; padding: 6px; border-radius: 4px; font-size: 11px; width: 100%;">
+                            <option value="daily">Harian (Setiap Hari)</option>
+                            <option value="monthly">Bulanan (Tanggal Tertentu)</option>
+                        </select>
+                    </div>
+                    
+                    <div id="remDateContainer" style="flex: 1; display: none; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 10px; color: #8b949e; font-weight: bold;">TANGGAL (1-31)</label>
+                        <input type="number" id="remDate" min="1" max="31" placeholder="Contoh: 9" style="background: #010409; color: #c9d1d9; border: 1px solid #30363d; padding: 6px; border-radius: 4px; font-size: 11px; width: 100%; box-sizing: border-box;">
+                    </div>
+
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 10px; color: #8b949e; font-weight: bold;">WAKTU (HH:mm)</label>
+                        <input type="time" id="remTime" style="background: #010409; color: #c9d1d9; border: 1px solid #30363d; padding: 6px; border-radius: 4px; font-size: 11px; width: 100%; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">
+                    <label style="font-size: 10px; color: #8b949e; font-weight: bold;">PESAN PENGINGAT</label>
+                    <input type="text" id="remMsg" placeholder="Contoh: Jangan lupa rekap tiket dan kirim ke L2!" style="background: #010409; color: #c9d1d9; border: 1px solid #30363d; padding: 8px; border-radius: 4px; font-size: 12px; width: 100%; box-sizing: border-box; outline: none;">
+                </div>
+
+               <button id="btnSaveReminder" onclick="addNewReminder()" style="background: #2ea043; border: 1px solid #3fb950; color: white; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 11px; transition: 0.2s;">SIMPAN REMINDER</button>
+            </div>
+
+            <h4 style="margin-top: 0; color: #8b949e; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 10px;">📋 DAFTAR PENGINGAT AKTIF</h4>
+            <div id="reminderListContainer" style="max-height: 250px; overflow-y: auto;">
+                <!-- List Reminder Muncul Disini -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- POP-UP MODAL SAAT REMINDER BUNYI -->
+    <!-- ========================================== -->
+    <div id="reminderPopupModal" style="display: none; position: fixed; z-index: 99999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; backdrop-filter: blur(5px);">
+        <div style="background: #0d1117; border: 2px solid #58a6ff; border-radius: 8px; width: 450px; padding: 30px; text-align: center; box-shadow: 0 0 50px rgba(88, 166, 255, 0.4); animation: pulseBlue 2s infinite;">
+            <div style="font-size: 50px; margin-bottom: 15px;">⏰</div>
+            <h2 style="color: #58a6ff; margin-top: 0; margin-bottom: 10px; font-family: 'Segoe UI', sans-serif;">PENGINGAT NOC!</h2>
+            <div id="reminderPopupMsg" style="color: #c9d1d9; font-size: 16px; margin-bottom: 30px; line-height: 1.5; font-weight: 500;">
+                <!-- Pesan Muncul Disini -->
+            </div>
+            <button onclick="closeReminderPopup()" style="background: #1f6feb; border: none; color: white; padding: 12px 30px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">OK, SAYA MENGERTI</button>
+        </div>
+    </div>
+
+    <!-- Audio Khusus Reminder -->
+    <audio id="reminderAudio" src="src/alarm/SmokeDet.mp3"></audio>
+
+    <div id="alarmModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span class="modal-title">⚙️ ALARM PREFERENCES & MUTE CONTROL</span>
+                <button class="modal-close" onclick="closeAlarmModal()">&times;</button>
+            </div>
+            <div id="alarmCardsContainer"></div>
+        </div>
+        <div id="alarmStickyFooter" style="position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(180deg, rgba(13,17,23,0.98), rgba(22,27,34,0.95)); border-bottom: 1px solid #30363d; padding: 12px 20px; z-index: 20001; display: none; gap: 10px; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            <span style="color: #f1e05a; font-weight: bold; font-size: 13px;">⚙️ ALARM SETTINGS</span>
+            <div style="flex: 1;"></div>
+            <button onclick="factoryResetAlarm()" style="background: transparent; color: #ff7b72; border: 1px solid #da3633; font-weight: bold; padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">⚠️ Factory Reset</button>
+            <button onclick="forceStopAlarm()" style="background: transparent; color: #f85149; border: 1px solid #da3633; font-weight: bold; padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">🛑 Stop Suara</button>
+            <button onclick="closeAlarmModal()" style="background: transparent; color: #8b949e; border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">CANCEL</button>
+            <button onclick="saveAlarmSettings()" style="background: #238636; border: none; color: white; font-weight:bold; padding: 8px 15px; border-radius: 4px; font-size: 11px; cursor: pointer;">💾 SAVE & APPLY</button>
+        </div>
+    </div>
+
+    <div id="exportModal" class="modal-overlay">
+        <div class="modal-box" style="width: 500px;">
+            <div class="modal-header">
+                <span class="modal-title">📥 EXPORT & SYSTEM SYNC</span>
+                <button class="modal-close" onclick="closeExportModal()">&times;</button>
+            </div>
+            
+            <h4 style="margin-top: 0; color: #58a6ff; font-size: 12px; border-bottom: 1px dashed #30363d; padding-bottom: 8px; margin-bottom: 15px;">🔄 MIGRASI PC (PILIH DATA YANG INGIN DICOPY)</h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px;">
+                <label class="export-cb-label">
+                    <input type="checkbox" id="syncNotes" checked>
+                    <span class="export-cb-text">📝 Notes (Catatan Shift)</span>
+                    <span class="export-cb-desc">Smart Merge (No Overwrite)</span>
+                </label>
+                <label class="export-cb-label">
+                    <input type="checkbox" id="syncAlarm" checked>
+                    <span class="export-cb-text">⚙️ Alarm Settings</span>
+                    <span class="export-cb-desc">noc_multi_alarm, dll</span>
+                </label>
+                <label class="export-cb-label">
+                    <input type="checkbox" id="syncSchedule" checked>
+                    <span class="export-cb-text">📅 Schedule & Holidays</span>
+                    <span class="export-cb-desc">noc_schedule_master_v2</span>
+                </label>
+                <label class="export-cb-label">
+                    <input type="checkbox" id="syncChecklist" checked>
+                    <span class="export-cb-text">✅ Checked Tickets (Done/Ack)</span>
+                    <span class="export-cb-desc">grafana_checked, opm_checked</span>
+                </label>
+                <!-- OPSI BARU SINKRONISASI REMINDER -->
+                <label class="export-cb-label">
+                    <input type="checkbox" id="syncReminders" checked>
+                    <span class="export-cb-text">⏰ Reminders (Pengingat)</span>
+                    <span class="export-cb-desc">noc_reminders</span>
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button onclick="exportGlobalDataAsFile('SELECTED')" style="flex: 1; background: #0969da; border: 1px solid #1f6feb; color: white; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='#1f6feb'" onmouseout="this.style.background='#0969da'">
+                    📥 DOWNLOAD SELECTED
+                </button>
+                <button onclick="exportGlobalDataAsFile('ALL')" style="flex: 1; background: #2ea043; border: 1px solid #3fb950; color: white; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='#3fb950'" onmouseout="this.style.background='#2ea043'">
+                    💾 DOWNLOAD ALL DATA
+                </button>
+            </div>
+
+            <div style="width: 100%; border-top: 1px solid #30363d; margin-top: 5px; padding-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                <button onclick="manualBackupNow(this)" style="width: 100%; background: #1f3a2a; border: 1px solid #238636; color: #3fb950; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='#238636';this.style.color='#fff'" onmouseout="this.style.background='#1f3a2a';this.style.color='#3fb950'">
+                    💾 MANUAL BACKUP SEKARANG
+                </button>
+                <button onclick="showGlobalImportPrompt()" style="width: 100%; background: transparent; border: 1px dashed #d29922; color: #d29922; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='rgba(210,153,34,0.1)'" onmouseout="this.style.background='transparent'">
+                    📥 PASTE DATA (IMPORT KE PC INI)
+                </button>
+            </div>
+            
+            <div style="color: #8b949e; font-size: 10px; margin-top: 15px; font-style: italic; text-align: center;">
+                Info: Pengaturan profil PIC (Nama Login) selalu diabaikan agar tidak tertimpa.
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ==========================================
+    // FUNGSI EXPORT & KONTROL MODAL
+    // ==========================================
+    function handleExportDiskUsage(btn) {
+        const origText = btn.innerText;
+        btn.innerText = "⏳ Memproses Data Disk...";
+        btn.style.cursor = "wait";
+        
+        setTimeout(() => {
+            exportToExcelDiskUsage(); 
+            btn.innerText = origText;
+            btn.style.cursor = "pointer";
+            closeExportModal();
+        }, 500);
+    }
+
+    // ===== REALTIME CLOCK =====
+    (function() {
+        const el = document.getElementById('headerClock');
+        function tick() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2,'0');
+            const mm = String(now.getMinutes()).padStart(2,'0');
+            const ss = String(now.getSeconds()).padStart(2,'0');
+            el.textContent = hh + ':' + mm + ':' + ss;
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+
+    // ===== STATS COLLAPSIBLE =====
+    let _statsVisible = true;
+    function toggleStats() {
+        _statsVisible = !_statsVisible;
+        const el = document.getElementById('statsCollapsible');
+        const btn = document.getElementById('statsToggleBtn');
+        el.classList.toggle('collapsed', !_statsVisible);
+        btn.textContent = _statsVisible ? '◀' : '▶';
+        btn.title = _statsVisible ? 'Sembunyikan Stats' : 'Tampilkan Stats';
+    }
+
+    // ===== TOOLS DROPDOWN (fixed position, tidak terhalangi iframe) =====
+    let _toolsOpen = false;
+    function toggleToolsDropdown() {
+        _toolsOpen ? closeToolsDropdown() : openToolsDropdown();
+    }
+    function openToolsDropdown() {
+        const btn = document.getElementById('toolsDropBtn');
+        const panel = document.getElementById('toolsDropPanel');
+        const rect = btn.getBoundingClientRect();
+        panel.style.top  = (rect.bottom + 6) + 'px';
+        panel.style.left = (rect.right - 190) + 'px';
+        panel.style.display = 'block';
+        btn.classList.add('active');
+        _toolsOpen = true;
+    }
+    function closeToolsDropdown() {
+        document.getElementById('toolsDropPanel').style.display = 'none';
+        document.getElementById('toolsDropBtn').classList.remove('active');
+        _toolsOpen = false;
+        cancelHideRvtoolsSub();
+        const sub = document.getElementById('rvtoolsSubMenu');
+        if (sub) sub.style.display = 'none';
+    }
+    let _rvSubHideTimer = null;
+    function showRvtoolsSub(triggerEl) {
+        cancelHideRvtoolsSub();
+        const sub = document.getElementById('rvtoolsSubMenu');
+        const rect = triggerEl.getBoundingClientRect();
+        sub.style.top = rect.top + 'px';
+        sub.style.left = (rect.right + 4) + 'px';
+        sub.style.display = 'block';
+    }
+    function schedHideRvtoolsSub() {
+        _rvSubHideTimer = setTimeout(() => {
+            document.getElementById('rvtoolsSubMenu').style.display = 'none';
+        }, 120);
+    }
+    function cancelHideRvtoolsSub() {
+        clearTimeout(_rvSubHideTimer);
+    }
+    document.addEventListener('click', function(e) {
+        if (!_toolsOpen) return;
+        const btn   = document.getElementById('toolsDropBtn');
+        const panel = document.getElementById('toolsDropPanel');
+        if (!btn.contains(e.target) && !panel.contains(e.target)) closeToolsDropdown();
+    });
+
+
+    function openPrtgModal() {
+        const frame = document.getElementById('prtgFrameModal');
+        frame.style.display = 'block';
+        if (frame.contentWindow && typeof frame.contentWindow.triggerRefresh === 'function') {
+            frame.contentWindow.triggerRefresh(); 
+        }
+    }
+    function closePrtgModal() {
+        document.getElementById('prtgFrameModal').style.display = 'none';
+    }
+
+    function openExportModal() { document.getElementById('exportModal').style.display = 'flex'; }
+    function closeExportModal() { document.getElementById('exportModal').style.display = 'none'; }
+
+    window.addEventListener('click', function(event) {
+        if (event.target === document.getElementById('exportModal')) closeExportModal();
+        if (event.target === document.getElementById('alarmModal')) closeAlarmModal();
+        if (event.target === document.getElementById('reminderSettingsModal')) closeReminderSettings();
+    });
+    </script>
+
+    <audio id="scheduledAlarm"></audio>
+
+    <script>
+    // ==========================================
+    // MASTER UI UPDATER & BROADCAST TO IFRAMES
+    // ==========================================
+    let globalFilterData = null;
+    let globalHistoryData = null;
+    let globalLogData = [];
+
+    // Parse aman: file di Data_JSON sering ditulis-ulang oleh start.bat tiap siklus,
+    // jadi sesekali ter-baca setengah/kosong → JSON.parse gagal ("Unexpected end of JSON input").
+    // Saat itu terjadi, pertahankan nilai lama (fallback) dan jangan gagalkan seluruh update.
+    async function _safeJson(resp, fallback) {
+        if (!resp) return fallback;
+        try {
+            const txt = await resp.text();
+            if (!txt || !txt.trim()) return fallback;     // file kosong (sedang ditulis)
+            return JSON.parse(txt);
+        } catch (e) {
+            return fallback;                              // JSON terpotong → pakai data sebelumnya
+        }
+    }
+
+    async function fetchMasterUI() {
+        try {
+            const [respHist, respFilt, respLog] = await Promise.all([
+                fetch('Data_JSON/history_utilization.json?t=' + Date.now()).catch(() => null),
+                fetch('Data_JSON/filter.json?t=' + Date.now()).catch(() => null),
+                fetch('Data_JSON/history_log.json?t=' + Date.now()).catch(() => null)
+            ]);
+
+            globalFilterData  = await _safeJson(respFilt, globalFilterData);
+            globalHistoryData = await _safeJson(respHist, globalHistoryData);
+            globalLogData     = await _safeJson(respLog,  globalLogData);
+
+            if (!globalFilterData) return;
+
+            const countV1 = globalFilterData.v1 ? globalFilterData.v1.length : 0;
+            const countV2 = globalFilterData.v2 ? globalFilterData.v2.length : 0;
+            const countApp = globalFilterData.app_level ? globalFilterData.app_level.length : 0;
+            const allUnique = new Set([...(globalFilterData.v1 || []), ...(globalFilterData.v2 || []), ...(globalFilterData.app_level || []), ...(globalFilterData.priority || [])]);
+
+            document.getElementById('total-v1').innerText = countV1;
+            document.getElementById('total-v2').innerText = countV2;
+            document.getElementById('total-app').innerText = countApp;
+            document.getElementById('total-ip-master').innerText = allUnique.size;
+
+            if (globalHistoryData) {
+                let totalFilteredDisplay = 0;
+                const currentFilter = document.getElementById('masterFilter').value;
+                const defaultRegistered = [...(globalFilterData.v1||[]), ...(globalFilterData.v2||[]), ...(globalFilterData.app_level||[]), ...(globalFilterData.priority||[])];
+
+                const countCrit = (obj, moduleName) => {
+                    if (!obj) return;
+                    Object.keys(obj).forEach(ipStr => {
+                        const ip = ipStr.split(':')[0];
+                        let excludedList = [];
+                        if (moduleName === 'AVA') excludedList = globalFilterData.ex_ava || [];
+                        else if (moduleName === 'CPU') excludedList = globalFilterData.ex_cpu || [];
+                        else if (moduleName === 'MEM') excludedList = globalFilterData.ex_mem || [];
+
+                        if (!excludedList.includes(ip)) {
+                            let isFilteredIn = false;
+                            if (currentFilter === 'unfilter') isFilteredIn = true;
+                            else if (currentFilter === 'all') isFilteredIn = defaultRegistered.includes(ip);
+                            else isFilteredIn = (globalFilterData[currentFilter] || []).includes(ip);
+                            
+                            if (isFilteredIn) totalFilteredDisplay++;
+                        }
+                    });
+                };
+
+                ['AVA', 'CPU', 'MEM'].forEach(mod => countCrit(globalHistoryData[mod], mod));
+                const critEl = document.getElementById('total-crit-master');
+                if (critEl) critEl.innerText = totalFilteredDisplay;
+            }
+
+            broadcast();
+
+        } catch (e) { console.error("Error updating UI:", e); }
+    }
+
+    function broadcast() {
+        const msg = { 
+            filter: document.getElementById('masterFilter').value, 
+            showOk: document.getElementById('masterShowOk').checked, 
+            search: document.getElementById('ipSearch').value.trim(), 
+            allF: globalFilterData, 
+            allH: globalHistoryData, 
+            allL: globalLogData 
+        };
+        document.querySelectorAll('iframe').forEach(f => f.contentWindow?.postMessage(msg, '*'));
+    }
+
+    // ===== ALARM SIGNAL DARI IFRAME CPU / MEMORY (NO DATA) =====
+    // Persist lastCount ke localStorage supaya tidak reset ke 0 saat page reload (penyebab spam)
+    let _lastNoDataCpu = parseInt(localStorage.getItem('_noc_last_nodata_cpu') || '0');
+    let _lastNoDataMem = parseInt(localStorage.getItem('_noc_last_nodata_mem') || '0');
+    let _firstScanNoData = { CPU: true, MEM: true };
+    // Cooldown: nodata alarm hanya bunyi/masuk history max 1x per 5 menit per tipe
+    let _noDataCooldown = { CPU: 0, MEM: 0 };
+    const NODATA_COOLDOWN_MS = 300000; // 5 menit
+
+    // Kumpulkan live Grafana data dari semua iframe untuk ticket_verifier
+    window.liveGrafanaAlerts = [];
+    function closeDiskModal(e) {
+        const modal = document.getElementById('diskDetailModal');
+        if (!e || e.target === modal) modal.style.display = 'none';
+    }
+
+    function downloadDiskDetailXlsx() {
+        const rows = (window._diskDetailRows || []).map(r => ({
+            ipFull:   r.ipFull || r.ip,
+            hostname: r.host || '',
+            mount:    r.mount,
+            min:      r.min,
+            mean:     r.mean,
+            max:      r.max,
+            last:     r.last
+        }));
+        if (!rows.length) return;
+        const dateStr = _fuDateStr();
+        const bytes   = _fuBuildDiskXlsx(rows, dateStr);
+        _fuXlsxDownload(bytes, `Disk Alert (${dateStr}).xlsx`);
+    }
+
+
+    window.addEventListener('message', function(e) {
+        const d = e.data;
+        if (d.type === 'OPM_OPEN_TICKET') {
+            openUnifiedTicket();
+            setTimeout(() => switchTab('OPMAN'), 50);
+            return;
+        }
+        if (d.type === 'DISK_DETAIL') {
+            const rows = d.rows || [];
+            window._diskDetailRows = rows;
+            const crit = rows.filter(r => r.last >= 85).length;
+            document.getElementById('diskModalSub').textContent =
+                `${rows.length} mount · ${crit} kritis · ${rows.length - crit} warning`;
+            document.getElementById('diskDetailBody').innerHTML = rows.map(r => {
+                const bc = r.last >= 85 ? 'bc' : 'bw';
+                const badgeStyle = r.last >= 85
+                    ? 'background:rgba(248,81,73,0.15);color:#ff7b72;border:1px solid rgba(248,81,73,0.3);'
+                    : 'background:rgba(210,153,34,0.15);color:#e3b341;border:1px solid rgba(210,153,34,0.3);';
+                return `<tr>
+                    <td style="padding:4px 10px;border-bottom:1px solid #21262d;border-right:1px solid #161c25;overflow:hidden;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#58a6ff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.ip}</div>
+                        ${r.host ? `<div style="font-size:9px;color:#6e7681;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.host}</div>` : ''}
+                    </td>
+                    <td style="padding:4px 10px;border-bottom:1px solid #21262d;border-right:1px solid #161c25;font-family:'JetBrains Mono',monospace;font-size:11px;color:#d2a8ff;overflow:hidden;word-break:break-all;">${r.mount}</td>
+                    <td style="padding:4px 10px;border-bottom:1px solid #21262d;border-right:1px solid #161c25;font-family:'JetBrains Mono',monospace;font-size:11px;text-align:right;color:#8b949e;">${r.min.toFixed(1)}%</td>
+                    <td style="padding:4px 10px;border-bottom:1px solid #21262d;border-right:1px solid #161c25;font-family:'JetBrains Mono',monospace;font-size:11px;text-align:right;color:#8b949e;">${r.mean.toFixed(1)}%</td>
+                    <td style="padding:4px 10px;border-bottom:1px solid #21262d;border-right:1px solid #161c25;font-family:'JetBrains Mono',monospace;font-size:11px;text-align:right;color:#8b949e;">${r.max.toFixed(1)}%</td>
+                    <td style="padding:4px 10px;border-bottom:1px solid #21262d;text-align:right;"><span style="display:inline-block;padding:1px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;${badgeStyle}">${r.last.toFixed(1)}%</span></td>
+                </tr>`;
+            }).join('');
+            document.getElementById('diskDetailModal').style.display = 'flex';
+            return;
+        }
+        if (d.type === 'GRAFANA_LIVE_DATA' && Array.isArray(d.payload)) {
+            // Merge data dari tiap iframe (AVA, CPU, MEM) tanpa duplikat
+            d.payload.forEach(incoming => {
+                const exists = window.liveGrafanaAlerts.some(x => x.ip === incoming.ip && x.moduleName === incoming.moduleName);
+                if (!exists) window.liveGrafanaAlerts.push(incoming);
+            });
+            return;
+        }
+        if (d.type !== 'ALARM_SIGNAL') return;
+        const module = d.module;
+        if (module !== 'CPU' && module !== 'MEM') return;
+
+        const staleCount = d.staleCount !== undefined ? d.staleCount : 0;
+
+        if (_firstScanNoData[module]) {
+            _firstScanNoData[module] = false;
+            if (module === 'CPU') { _lastNoDataCpu = staleCount; localStorage.setItem('_noc_last_nodata_cpu', staleCount); }
+            else { _lastNoDataMem = staleCount; localStorage.setItem('_noc_last_nodata_mem', staleCount); }
+            return;
+        }
+
+        const now = Date.now();
+        // Bunyi alarm jika rising edge DAN cooldown sudah lewat — tapi TIDAK masuk history (terlalu spam)
+        if (module === 'CPU' && staleCount > _lastNoDataCpu && (now - _noDataCooldown.CPU) >= NODATA_COOLDOWN_MS) {
+            _noDataCooldown.CPU = now;
+            if (!isGlobalMuted) playNocAlarm('nodata_cpu');
+        }
+        if (module === 'MEM' && staleCount > _lastNoDataMem && (now - _noDataCooldown.MEM) >= NODATA_COOLDOWN_MS) {
+            _noDataCooldown.MEM = now;
+            if (!isGlobalMuted) playNocAlarm('nodata_mem');
+        }
+        if (module === 'CPU') { _lastNoDataCpu = staleCount; localStorage.setItem('_noc_last_nodata_cpu', staleCount); }
+        if (module === 'MEM') { _lastNoDataMem = staleCount; localStorage.setItem('_noc_last_nodata_mem', staleCount); }
+    });
+
+    document.getElementById('masterFilter').addEventListener('change', fetchMasterUI);
+
+    // Saat tab kembali aktif/visible, langsung refresh data tanpa tunggu interval worker
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            fetchMasterUI();
+        }
+    });
+
+    // Mobile: strip inline grid-column styles so CSS media query takes over
+    (function applyMobileLayout() {
+        function check() {
+            const windows = document.querySelectorAll('.master-grid .window');
+            if (window.innerWidth <= 768) {
+                windows.forEach(w => w.style.removeProperty('grid-column'));
+            } else if (window.innerWidth <= 1024) {
+                windows.forEach(w => w.style.removeProperty('grid-column'));
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', check);
+        } else {
+            check();
+        }
+        window.addEventListener('resize', check);
+    })();
+
+    window.addEventListener('load', () => {
+        fetchMasterUI();
+        // fetchMasterUI interval dikendalikan oleh alarm_worker.js (tick 'masterui')
+        // agar tidak kena browser tab throttling. Fallback interval hanya jika worker belum siap.
+
+        if (typeof createUnifiedModal === 'function') {
+            createUnifiedModal();
+        }
+
+        const prefetchTickets = () => {
+            if (typeof renderTicketBody === 'function') renderTicketBody();
+            if (typeof renderOpManagerData === 'function') renderOpManagerData();
+        };
+
+        setTimeout(() => {
+            prefetchTickets();
+            setInterval(prefetchTickets, 30000); 
+        }, 2000);
+    });
+    </script>
+
+    <iframe id="prtgFrameModal" src="prtg_modal.html" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; border: none; z-index: 99999; background: transparent;"></iframe>
+
+    <!-- Tools dropdown panel — fixed di body agar tidak tertutup iframe -->
+    <div id="toolsDropPanel" style="
+        display: none;
+        position: fixed;
+        z-index: 999999;
+        background: #11161d;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.6);
+        min-width: 190px;
+        padding: 4px 0;
+    ">
+        <button class="tools-dd-item" onclick="openFollowUpReport(); closeToolsDropdown()"><span class="tools-dd-icon">📊</span> Follow Up Report</button>
+        <button class="tools-dd-item" onclick="openExportModal(); closeToolsDropdown()"><span class="tools-dd-icon">📥</span> Export localStorage</button>
+        <div id="rvtoolsGroup">
+            <button class="tools-dd-item tools-dd-has-sub" onmouseenter="showRvtoolsSub(this)" onmouseleave="schedHideRvtoolsSub()"><span class="tools-dd-icon">🖥️</span> RVTools DB <span style="margin-left:auto; font-size:9px; color:#58a6ff;">▶</span></button>
+        </div>
+        <button class="tools-dd-item" onclick="openPrtgModal(); closeToolsDropdown()"><span class="tools-dd-icon">📡</span> PRTG Status</button>
+        <div class="tools-dd-divider"></div>
+        <button class="tools-dd-item" onclick="openNotes(); closeToolsDropdown()"><span class="tools-dd-icon">📝</span> Notes Shift</button>
+        <button class="tools-dd-item" onclick="window.open('ip_checker.html','_blank'); closeToolsDropdown()"><span class="tools-dd-icon">🔍</span> IP Checker</button>
+        <button class="tools-dd-item" onclick="openLog(); closeToolsDropdown()"><span class="tools-dd-icon">📜</span> Log Riwayat</button>
+        <button class="tools-dd-item" onclick="openSchedule(); closeToolsDropdown()"><span class="tools-dd-icon">📅</span> Jadwal Shift</button>
+        <div class="tools-dd-divider"></div>
+        <button class="tools-dd-item" onclick="openConsoleModal(); closeToolsDropdown()"><span class="tools-dd-icon">🖥️</span> Console <span style="margin-left:auto; font-size:9px; color:#6e7681;">cek error</span></button>
+        <button class="tools-dd-item" onclick="openDocsModal(); closeToolsDropdown()"><span class="tools-dd-icon">📘</span> Dokumentasi</button>
+        <button class="tools-dd-item" onclick="window.open('settings.html','_blank'); closeToolsDropdown()" style="color: #58a6ff;"><span class="tools-dd-icon">⚙️</span> Settings</button>
+    </div>
+
+    <!-- Sub-menu RVTools — di luar panel agar tidak terpotong overflow -->
+    <div id="rvtoolsSubMenu" style="display:none; position:fixed; background:#11161d; border:1px solid #30363d; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.7); min-width:185px; padding:4px 0; z-index:9999999;" onmouseenter="cancelHideRvtoolsSub()" onmouseleave="schedHideRvtoolsSub()">
+        <button class="tools-dd-item" onclick="window.open('rvtools.html','_blank'); closeToolsDropdown()"><span class="tools-dd-icon">📊</span> Buka RVTools DB</button>
+        <button class="tools-dd-item" onclick="window.open('Data_JSON/RVTOOLS/','_blank'); closeToolsDropdown()"><span class="tools-dd-icon">📂</span> Buka Folder RVTOOLS</button>
+    </div>
+
+    <script>
+    // ==========================================
+    // FUNGSI KOMPRESI (CompressionStream API)
+    // ==========================================
+    // Mengompres string ke format Base64 yang lebih padat untuk menembus limit WA
+    async function compressData(stringData) {
+        const stream = new Blob([stringData], { type: 'text/plain' }).stream();
+        const compressedStream = stream.pipeThrough(new CompressionStream('deflate-raw'));
+        const chunks = [];
+        const reader = compressedStream.getReader();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+        }
+        const blob = new Blob(chunks);
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+    }
+
+    async function decompressData(base64String) {
+        try {
+            const binary = atob(base64String);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            const stream = new Blob([bytes]).stream();
+            const decompressedStream = stream.pipeThrough(new DecompressionStream('deflate-raw'));
+            const response = new Response(decompressedStream);
+            return await response.text();
+        } catch (e) {
+            // Jika gagal dekompresi (mungkin data lama non-kompresi), kembalikan data mentahnya saja
+            return base64String;
+        }
+    }
+
+    // ==========================================
+    // FUNGSI SINKRONISASI GLOBAL (DENGAN KOMPRESI & SMART MERGE)
+    // ==========================================
+    async function exportGlobalData(mode) {
+        let exportData = {};
+        
+        // Logika Pemilihan Key
+        const wantNotes = document.getElementById('syncNotes').checked;
+        const wantAlarm = document.getElementById('syncAlarm').checked;
+        const wantSchedule = document.getElementById('syncSchedule').checked;
+        const wantChecklist = document.getElementById('syncChecklist').checked;
+        const wantReminders = document.getElementById('syncReminders').checked; // BARU
+
+        let copiedCount = 0;
+
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            
+            // Pengecualian MUTLAK (PIC tidak pernah ikut)
+            if (key === 'grafana_global_pic' || key === 'opm_global_pic' || key === 'global_noc_pic' || key === 'global_pic') continue;
+            
+            let shouldInclude = false;
+
+            if (mode === 'ALL') {
+                shouldInclude = true;
+            } else {
+                // Mode SELECTED
+                if (wantNotes && key === 'noc_shift_notes') shouldInclude = true;
+                if (wantAlarm && (key.includes('noc_alarm') || key.includes('noc_multi') || key.includes('noc_5tier'))) shouldInclude = true;
+                if (wantSchedule && (key.includes('noc_schedule') || key.includes('noc_holidays'))) shouldInclude = true;
+                if (wantChecklist && (key.includes('grafana_checked') || key.includes('opm_checked'))) shouldInclude = true;
+                if (wantReminders && key === 'noc_reminders') shouldInclude = true; // BARU
+            }
+
+            if (shouldInclude) {
+                exportData[key] = localStorage.getItem(key);
+                copiedCount++;
+            }
+        }
+        
+        if (copiedCount === 0) {
+            alert("⚠️ Tidak ada data yang dipilih atau ditemukan untuk dicopy.");
+            return;
+        }
+
+        let dataString = JSON.stringify(exportData);
+        
+        // Proses Kompresi agar teks tidak dipotong oleh WhatsApp
+        let finalPayload = "";
+        try {
+            finalPayload = await compressData(dataString);
+            // Beri tanda header bahwa ini adalah data terkompresi
+            finalPayload = "NOC_SYNC|" + finalPayload;
+        } catch (e) {
+            console.warn("Kompresi gagal, menggunakan JSON mentah.");
+            finalPayload = dataString; 
+        }
+
+        navigator.clipboard.writeText(finalPayload).then(() => {
+            alert(`✅ EXPORT SUKSES! (${copiedCount} Modul)\n\nData (Telah Dikompresi) berhasil disalin ke Clipboard.\n\nSilakan Paste (Ctrl+V) di WA Web / Notepad untuk dikirim ke PC sebelah.`);
+        }).catch(err => {
+            alert("❌ Browser memblokir auto-copy. Silakan coba lagi.");
+        });
+    }
+
+    async function exportGlobalDataAsFile(mode) {
+        let exportData = {};
+
+        const wantNotes = document.getElementById('syncNotes').checked;
+        const wantAlarm = document.getElementById('syncAlarm').checked;
+        const wantSchedule = document.getElementById('syncSchedule').checked;
+        const wantChecklist = document.getElementById('syncChecklist').checked;
+        const wantReminders = document.getElementById('syncReminders').checked;
+
+        let copiedCount = 0;
+
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+
+            if (key === 'grafana_global_pic' || key === 'opm_global_pic' || key === 'global_noc_pic' || key === 'global_pic') continue;
+
+            let shouldInclude = false;
+
+            if (mode === 'ALL') {
+                shouldInclude = true;
+            } else {
+                if (wantNotes && key === 'noc_shift_notes') shouldInclude = true;
+                if (wantAlarm && (key.includes('noc_alarm') || key.includes('noc_multi') || key.includes('noc_5tier'))) shouldInclude = true;
+                if (wantSchedule && (key.includes('noc_schedule') || key.includes('noc_holidays'))) shouldInclude = true;
+                if (wantChecklist && (key.includes('grafana_checked') || key.includes('opm_checked'))) shouldInclude = true;
+                if (wantReminders && key === 'noc_reminders') shouldInclude = true;
+            }
+
+            if (shouldInclude) {
+                exportData[key] = localStorage.getItem(key);
+                copiedCount++;
+            }
+        }
+
+        if (copiedCount === 0) {
+            alert("⚠️ Tidak ada data yang dipilih atau ditemukan untuk didownload.");
+            return;
+        }
+
+        let dataString = JSON.stringify(exportData);
+
+        let finalPayload = "";
+        try {
+            finalPayload = await compressData(dataString);
+            finalPayload = "NOC_SYNC|" + finalPayload;
+        } catch (e) {
+            console.warn("Kompresi gagal, menggunakan JSON mentah.");
+            finalPayload = dataString;
+        }
+
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const filename = `NOC_Backup_${yyyy}-${mm}-${dd}_${hh}-${min}.txt`;
+
+        const blob = new Blob([finalPayload], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        alert(`✅ DOWNLOAD SUKSES! (${copiedCount} Modul)\n\nFile: ${filename}\nUkuran: ${(blob.size / 1024).toFixed(2)} KB\n\nFile sudah tersimpan di folder Downloads. Silakan transfer ke PC sebelah via USB/Network/Telegram.`);
+    }
+
+    // === HELPER: Kumpulkan semua localStorage jadi payload terkompresi ===
+    async function _collectBackupPayload() {
+        const SKIP = new Set(['grafana_global_pic','opm_global_pic','global_noc_pic','global_pic','noc_last_auto_backup']);
+        let exportData = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (SKIP.has(key)) continue;
+            exportData[key] = localStorage.getItem(key);
+        }
+        if (Object.keys(exportData).length === 0) return null;
+        try {
+            const compressed = await compressData(JSON.stringify(exportData));
+            return 'NOC_SYNC|' + compressed;
+        } catch(e) {
+            return JSON.stringify(exportData);
+        }
+    }
+
+    // === HELPER: Kirim payload ke backup_server.py, fallback download jika server mati ===
+    async function _sendBackup(payload, label) {
+        try {
+            const res = await fetch('http://127.0.0.1:7878/backup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: payload
+            });
+            if (res.ok) return 'server';
+        } catch(e) { /* server tidak jalan, fallback download */ }
+
+        // Fallback: download file
+        const now  = new Date();
+        const dd   = String(now.getDate()).padStart(2,'0');
+        const mm   = String(now.getMonth()+1).padStart(2,'0');
+        const yyyy = now.getFullYear();
+        const hh   = String(now.getHours()).padStart(2,'0');
+        const min  = String(now.getMinutes()).padStart(2,'0');
+        const filename = `NOC_${label}_${yyyy}-${mm}-${dd}_${hh}-${min}.txt`;
+        const blob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename;
+        document.body.appendChild(link); link.click();
+        document.body.removeChild(link); URL.revokeObjectURL(url);
+        return 'download';
+    }
+
+    // === AUTO BACKUP AKHIR SHIFT ===
+    // Shift 1 → 14:55–14:59 | Shift 2 → 22:55–22:59 | Shift 3 → 07:25–07:29
+    async function autoBackupSilent() {
+        const now  = new Date();
+        const mins = now.getHours() * 60 + now.getMinutes();
+        const inWindow = (mins >= 875 && mins <= 879) ||
+                         (mins >= 1375 && mins <= 1379) ||
+                         (mins >= 445  && mins <= 449);
+        if (!inWindow) return;
+
+        const lastBackup = parseInt(localStorage.getItem('noc_last_auto_backup') || '0');
+        if (Date.now() - lastBackup < 60 * 60 * 1000) return;
+
+        const payload = await _collectBackupPayload();
+        if (!payload) return;
+
+        const shiftLabel = (mins >= 450 && mins <= 899) ? 'Shift1'
+                         : (mins >= 900 && mins <= 1379) ? 'Shift2' : 'Shift3';
+
+        const mode = await _sendBackup(payload, `AutoBackup_${shiftLabel}`);
+        localStorage.setItem('noc_last_auto_backup', String(Date.now()));
+
+        const msg = mode === 'server'
+            ? `💾 Auto-backup ${shiftLabel} tersimpan ke folder dashboard`
+            : `💾 Auto-backup ${shiftLabel} didownload (server tidak aktif)`;
+        console.log(`[AutoBackup] ✅ ${shiftLabel} via ${mode}`);
+
+        const toast = document.createElement('div');
+        toast.textContent = msg;
+        toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#238636;color:#fff;padding:10px 20px;border-radius:6px;font-size:12px;font-weight:bold;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.5);white-space:nowrap;';
+        document.body.appendChild(toast);
+        setTimeout(() => { if(document.body.contains(toast)) document.body.removeChild(toast); }, 6000);
+    }
+
+    // auto backup disabled (static portfolio mode — no backup_server.py)
+    // setInterval(autoBackupSilent, 60 * 1000);
+    // setTimeout(autoBackupSilent, 5000);
+
+    // === MANUAL BACKUP ===
+    async function manualBackupNow(btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '⏳ Menyimpan...';
+        btn.disabled = true;
+
+        const payload = await _collectBackupPayload();
+        if (!payload) {
+            alert('⚠️ Tidak ada data untuk dibackup.');
+            btn.innerHTML = orig; btn.disabled = false;
+            return;
+        }
+
+        const mode = await _sendBackup(payload, 'ManualBackup');
+        btn.innerHTML = mode === 'server' ? '✅ TERSIMPAN DI FOLDER!' : '✅ TERDOWNLOAD!';
+        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2500);
+    }
+
+    async function showGlobalImportPrompt() {
+        let pastedData = prompt("📥 IMPORT DATA SISTEM NOC\n\nPaste (Ctrl+V) kode dari PC lain ke kotak di bawah ini:");
+        
+        if (pastedData) {
+            try {
+                let jsonString = pastedData.trim();
+                
+                // Cek apakah data ini hasil kompresi (ada header NOC_SYNC|)
+                if (jsonString.startsWith("NOC_SYNC|")) {
+                    const base64Part = jsonString.substring(10);
+                    jsonString = await decompressData(base64Part);
+                }
+
+                let parsed = JSON.parse(jsonString);
+                
+                if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    let importedCount = 0;
+                    let notesMergedCount = 0;
+
+                    for (let key in parsed) {
+                        // LOGIKA SMART MERGE KHUSUS UNTUK NOTES
+                        if (key === 'noc_shift_notes') {
+                            try {
+                                const incomingNotes = JSON.parse(parsed[key]); // Array notes dari PC 1
+                                
+                                // Ambil notes yang ada di PC 2 (Lokal)
+                                const localNotesStr = localStorage.getItem('noc_shift_notes');
+                                let localNotes = localNotesStr ? JSON.parse(localNotesStr) : [];
+                                
+                                // Gabungkan menggunakan Map untuk mencari timestamp (ID) yang unik
+                                let notesMap = new Map();
+                                
+                                // 1. Masukkan semua local notes ke dalam map (Sebagai dasar)
+                                localNotes.forEach(note => {
+                                    notesMap.set(note.id, note);
+                                });
+                                
+                                // 2. Masukkan incoming notes. 
+                                // Jika ID-nya belum ada, dia akan bertambah.
+                                // Jika ID-nya sudah ada, dia akan me-replace (update) data lokal.
+                                incomingNotes.forEach(note => {
+                                    notesMap.set(note.id, note);
+                                    notesMergedCount++;
+                                });
+                                
+                                // 3. Kembalikan Map ke bentuk Array dan urutkan berdasarkan waktu terbaru
+                                const mergedNotesArray = Array.from(notesMap.values());
+                                mergedNotesArray.sort((a, b) => b.timestamp - a.timestamp);
+                                
+                                // Simpan kembali ke localStorage
+                                localStorage.setItem('noc_shift_notes', JSON.stringify(mergedNotesArray));
+                                importedCount++;
+                                
+                            } catch (e) {
+                                console.error("Gagal melakukan merge pada Notes", e);
+                                // Fallback: Jika error, timpa paksa
+                                localStorage.setItem(key, parsed[key]);
+                            }
+                        } 
+                        else {
+                            // Untuk key selain notes (Alarm, Jadwal, Checklist), timpa paksa seperti biasa
+                            localStorage.setItem(key, parsed[key]);
+                            importedCount++;
+                        }
+                    }
+                    
+                    alert(`✅ IMPORT SUKSES!\n\nSebanyak ${importedCount} pengaturan berhasil diterapkan.\n(${notesMergedCount} Notes berhasil di-Merge).\n\nSistem akan dimuat ulang (Refresh) sekarang.`);
+                    location.reload(); 
+                } else {
+                    alert("❌ FORMAT SALAH!\nData yang Anda paste bukan format JSON/Sync yang valid.");
+                }
+            } catch(e) {
+                alert("❌ GAGAL MEMBACA DATA!\nTeks yang Anda paste rusak, terpotong, atau gagal di-decompress.");
+            }
+        }
+    }
+
+    // ===== KIBANA ALARM SIGNAL — toast & history via notification.js =====
+    const _kibanaAlarmCooldown = {};
+    const KIBANA_COOLDOWN_MS = 5 * 60 * 1000;
+    const _NOC_HISTORY_KEY = 'noc_alarm_history_v1';
+
+    function _directPushAlarmHistory(typeId, detail) {
+        // Utamakan engine — pushAlarmHistory sudah handle localStorage + toast + badge sekaligus.
+        if (typeof window.pushAlarmHistory === 'function') { window.pushAlarmHistory(typeId, detail); return; }
+        // Fallback: alarm_engine belum siap — tulis langsung ke localStorage (hindari double-write)
+        try {
+            const history = JSON.parse(localStorage.getItem(_NOC_HISTORY_KEY) || '[]');
+            history.unshift({ typeId, detail, ts: Date.now() });
+            if (history.length > 200) history.length = 200;
+            localStorage.setItem(_NOC_HISTORY_KEY, JSON.stringify(history));
+        } catch(e) {}
+        if (typeof window._refreshAlarmHistoryPanel === 'function') window._refreshAlarmHistoryPanel();
+    }
+
+    window.addEventListener('message', (event) => {
+        if (event.data.type === 'KIBANA_TOAST_ALERT') {
+            const ch  = event.data.channel || '';
+            const msg = event.data.message || '';
+            const now = Date.now();
+
+            if (_kibanaAlarmCooldown[ch] && (now - _kibanaAlarmCooldown[ch]) < KIBANA_COOLDOWN_MS) return;
+            _kibanaAlarmCooldown[ch] = now;
+
+            if (ch.includes('153')) {
+                _directPushAlarmHistory('kibana_153', `Channel ${ch} — ${msg}`);
+                if (typeof playNocAlarm === 'function') playNocAlarm('kibana_153');
+            } else if (ch.includes('194')) {
+                _directPushAlarmHistory('kibana_194', `Channel ${ch} — ${msg}`);
+                if (typeof playNocAlarm === 'function') playNocAlarm('kibana_194');
+            } else {
+                _directPushAlarmHistory('kibana_153', `Channel ${ch} — ${msg}`);
+                if (typeof playNocAlarm === 'function') playNocAlarm('kibana_153');
+            }
+        }
+        if (event.data.type === 'QRIS_DNH_ALARM') {
+            _directPushAlarmHistory(event.data.alarmType, event.data.detail || 'QRIS Do Not Honor');
+            if (typeof playNocAlarm === 'function') playNocAlarm(event.data.alarmType);
+        }
+    });
+    </script>
+    </body>
+    </html>

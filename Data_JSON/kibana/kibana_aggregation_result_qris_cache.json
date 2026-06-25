@@ -1,0 +1,132 @@
+{
+  "timestamp": "2026-06-24T22:43:27.271879",
+  "acquirer": {
+    "00": {
+      "code": "00",
+      "label": "Transaction Success",
+      "count": 618
+    },
+    "03": {
+      "code": "03",
+      "label": "Invalid Merchant",
+      "count": 2
+    },
+    "05": {
+      "code": "05",
+      "label": "Do Not Honor",
+      "count": 8
+    },
+    "12": {
+      "code": "12",
+      "label": "Invalid Transaction",
+      "count": 0
+    },
+    "13": {
+      "code": "13",
+      "label": "Invalid Amount",
+      "count": 0
+    },
+    "14": {
+      "code": "14",
+      "label": "Invalid PAN Number",
+      "count": 0
+    },
+    "18": {
+      "code": "18",
+      "label": "Customer Dispute",
+      "count": 0
+    },
+    "31": {
+      "code": "31",
+      "label": "Bank not supported by switch",
+      "count": 0
+    },
+    "33": {
+      "code": "33",
+      "label": "Invalid Customer ID",
+      "count": 0
+    },
+    "68": {
+      "code": "68",
+      "label": "Transaction Timeout",
+      "count": 0
+    },
+    "94": {
+      "code": "94",
+      "label": "Duplicate Transaction",
+      "count": 0
+    },
+    "99": {
+      "code": "99",
+      "label": "Generate Error",
+      "count": 0
+    }
+  },
+  "issuer": {
+    "00": {
+      "code": "00",
+      "label": "Transaction Success",
+      "count": 194
+    },
+    "03": {
+      "code": "03",
+      "label": "Invalid Merchant",
+      "count": 1
+    },
+    "05": {
+      "code": "05",
+      "label": "Do Not Honor",
+      "count": 0
+    },
+    "12": {
+      "code": "12",
+      "label": "Invalid Transaction",
+      "count": 0
+    },
+    "13": {
+      "code": "13",
+      "label": "Invalid Amount",
+      "count": 0
+    },
+    "14": {
+      "code": "14",
+      "label": "Invalid PAN Number",
+      "count": 0
+    },
+    "18": {
+      "code": "18",
+      "label": "Customer Dispute",
+      "count": 0
+    },
+    "31": {
+      "code": "31",
+      "label": "Bank not supported by switch",
+      "count": 0
+    },
+    "33": {
+      "code": "33",
+      "label": "Invalid Customer ID",
+      "count": 0
+    },
+    "68": {
+      "code": "68",
+      "label": "Transaction Timeout",
+      "count": 0
+    },
+    "94": {
+      "code": "94",
+      "label": "Duplicate Transaction",
+      "count": 0
+    },
+    "99": {
+      "code": "99",
+      "label": "Generate Error",
+      "count": 0
+    }
+  },
+  "do_not_honor": {
+    "acquirer": 8,
+    "issuer": 0,
+    "alert": false
+  }
+}

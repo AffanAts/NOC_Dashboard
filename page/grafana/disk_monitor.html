@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #0a0e14; color: #f0f6fc;
+            font-family: 'Inter', system-ui, sans-serif;
+            margin: 0; padding: 0;
+            -webkit-font-smoothing: antialiased;
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0a0e14; }
+        ::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #30363d; }
+
+        /* ── HEADER ── */
+        .summary {
+            flex-shrink: 0;
+            background: #161c25; padding: 5px 10px;
+            border-bottom: 1px solid #21262d;
+            display: flex; gap: 8px; font-size: 0.72em; font-weight: 500;
+            align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .sum-label {
+            background: #1a6b3a; color: #fff;
+            padding: 2px 8px; border-radius: 4px;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
+            white-space: nowrap; text-transform: uppercase; flex-shrink: 0;
+        }
+        .btn-detail {
+            flex-shrink: 0;
+            background: #21262d; color: #8b949e;
+            border: 1px solid #30363d; border-radius: 4px;
+            padding: 2px 8px; font-size: 9px; font-weight: 700;
+            letter-spacing: 0.5px; text-transform: uppercase;
+            cursor: pointer; transition: background 0.15s, color 0.15s;
+        }
+        .btn-detail:hover { background: #30363d; color: #f0f6fc; }
+        .btn-refresh {
+            flex-shrink: 0;
+            background: #0d2a1a; color: #3fb950;
+            border: 1px solid #238636; border-radius: 4px;
+            padding: 2px 8px; font-size: 9px; font-weight: 700;
+            letter-spacing: 0.5px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .btn-refresh:hover { background: #238636; color: #fff; }
+        .btn-refresh.spinning { animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .ts { font-size: 9px; color: #6e7681; margin-left: auto; white-space: nowrap; }
+
+        /* ── MAIN TABLE ── */
+        .scroll-wrap { flex: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        thead { position: sticky; top: 0; z-index: 1; }
+        thead tr { background: #0d1117; }
+        th {
+            padding: 5px 7px; text-align: left;
+            font-size: 9px; color: #6e7681; font-weight: 700;
+            letter-spacing: 0.6px; text-transform: uppercase;
+            border-bottom: 1px solid #30363d;
+            border-right: 1px solid #21262d;
+        }
+        th:last-child { border-right: none; }
+        th.r { text-align: right; }
+        th:nth-child(1) { width: 58%; }
+        th:nth-child(2) { width: 22%; }
+        th:nth-child(3) { width: 20%; }
+        td {
+            padding: 4px 7px;
+            border-bottom: 1px solid #21262d;
+            border-right: 1px solid #161c25;
+            vertical-align: middle; overflow: hidden;
+        }
+        td:last-child { border-right: none; }
+        tr:hover td { background: #161c25; }
+
+        .ip  { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #58a6ff; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hst { font-size: 9px; color: #6e7681; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .mnt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #d2a8ff; white-space: nowrap; }
+        .num { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; color: #8b949e; }
+        .badge {
+            display: inline-block; padding: 1px 7px; border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+        }
+        .bc { background: rgba(248,81,73,0.15); color: #ff7b72; border: 1px solid rgba(248,81,73,0.3); }
+        .bw { background: rgba(210,153,34,0.15); color: #e3b341; border: 1px solid rgba(210,153,34,0.3); }
+        .empty { text-align: center; padding: 60px 20px; color: #6e7681; font-size: 12px; line-height: 1.8; }
+        .prio-star { color: #f7a800; font-size: 10px; margin-left: 4px; vertical-align: middle; }
+
+    </style>
+
+    <style>
+    @media (max-width: 600px) {
+        body { font-size: 11px; }
+        .summary { padding: 4px 6px; gap: 6px; font-size: 0.7em; }
+        .ip { font-size: 10px; }
+        .hst { font-size: 8px; }
+        th, td { padding: 5px 4px; font-size: 10px; }
+    }
+    </style>
+
+</head>
+<body>
+    <div class="summary">
+        <span class="sum-label">Disk Usage</span>
+        <button class="btn-detail" onclick="openModal()">Detail</button>
+        <button class="btn-refresh" id="btnRefresh" onclick="refreshNow()" title="Refresh sekarang">↻ Refresh</button>
+        <span style="white-space:nowrap;">TOTAL: <b id="dtotal">-</b></span>
+        <span style="white-space:nowrap;">CRIT: <b id="dcrit" style="color:#ff7b72">-</b></span>
+        <span style="white-space:nowrap;">WARN: <b id="dwarn" style="color:#e3b341">-</b></span>
+        <span class="ts" id="dts">—</span>
+    </div>
+
+    <div class="scroll-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>IP / Host</th>
+                    <th>Mount</th>
+                    <th class="r">Last</th>
+                </tr>
+            </thead>
+            <tbody id="tbl"></tbody>
+        </table>
+        <div id="emptyMsg" class="empty" style="display:none;"></div>
+    </div>
+
+    <div id="sc"></div>
+
+    <script>
+        let allF = {v1:[], v2:[], app_level:[], priority:[], excluded:[]};
+        let cfg  = {filter:'all', showOk:true, search:''};
+        let rvK  = {};
+        let lastRows = [];
+
+        window.addEventListener('message', e => {
+            if (e.data.allF) allF = e.data.allF;
+            cfg = e.data;
+            render();
+        });
+
+        function openModal() {
+            const formatted = lastRows.map(r => ({
+                ipFull: r.ipFull, ip: r.ip, host: rvK[r.ip]?.VM || '',
+                mount: r.mount, min: r.min, mean: r.mean, max: r.max, last: r.last
+            }));
+            window.parent.postMessage({ type: 'DISK_DETAIL', rows: formatted }, '*');
+        }
+
+        function parseDisk(resp) {
+            if (!resp) return [];
+            const out = [];
+            const frames = resp?.results?.A?.frames ?? [];
+            for (const f of frames) {
+                const lbl    = f.schema?.fields?.[1]?.labels ?? {};
+                const ipFull = lbl.instance ?? '';
+                const ip     = ipFull.split(':')[0];
+                const mount  = lbl.mountpoint ?? '/';
+                if (!ip) continue;
+                const vals = (f.data?.values?.[1] ?? []).filter(v => v != null && !isNaN(v));
+                if (!vals.length) continue;
+                const min  = Math.min(...vals);
+                const max  = Math.max(...vals);
+                const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                const last = vals[vals.length - 1];
+                out.push({ ipFull, ip, mount, min, mean, max, last });
+            }
+            return out;
+        }
+
+        function render() {
+            const reg = [
+                ...(allF.v1 || []), ...(allF.v2 || []),
+                ...(allF.app_level || []), ...(allF.priority || [])
+            ];
+            let activeSet = null;
+            if (cfg.filter === 'all') activeSet = new Set(reg);
+            else if (cfg.filter !== 'unfilter') activeSet = new Set(allF[cfg.filter] || []);
+            const q = (cfg.search || '').toLowerCase();
+
+            let rows = [];
+            if (typeof dataDisk1 !== 'undefined') rows.push(...parseDisk(dataDisk1));
+            if (typeof dataDisk2 !== 'undefined') rows.push(...parseDisk(dataDisk2));
+
+            rows = rows.filter(r => {
+                if (activeSet && !activeSet.has(r.ip)) return false;
+                if (q && !r.ip.includes(q) && !(rvK[r.ip]?.VM || '').toLowerCase().includes(q)) return false;
+                return r.last > 70;
+            });
+            rows.sort((a, b) => b.last - a.last);
+            lastRows = rows;
+
+            const crit = rows.filter(r => r.last >= 85).length;
+            document.getElementById('dtotal').textContent = rows.length;
+            document.getElementById('dcrit').textContent  = crit;
+            document.getElementById('dwarn').textContent  = rows.length - crit;
+
+            const tbl   = document.getElementById('tbl');
+            const empty = document.getElementById('emptyMsg');
+
+            if (!rows.length) {
+                tbl.innerHTML = '';
+                empty.innerHTML = '✅ Semua disk di bawah 70%';
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+
+            const prioSet = new Set(allF.priority || []);
+            tbl.innerHTML = rows.map(r => {
+                const host     = rvK[r.ip]?.VM || '';
+                const bc       = r.last >= 85 ? 'bc' : 'bw';
+                const mntShort = r.mount.length > 10 ? r.mount.slice(0, 10) + '…' : r.mount;
+                const prio     = prioSet.has(r.ip) ? '<span class="prio-star" title="Priority">★</span>' : '';
+                return `<tr>
+                    <td>
+                        <div class="ip">${r.ip}${prio}</div>
+                        ${host ? `<div class="hst">${host}</div>` : ''}
+                    </td>
+                    <td class="mnt" title="${r.mount}">${mntShort}</td>
+                    <td style="text-align:right"><span class="badge ${bc}">${r.last.toFixed(1)}%</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function refreshNow() {
+            const btn = document.getElementById('btnRefresh');
+            if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+            loadData().finally(() => {
+                if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+            });
+        }
+
+        async function loadData() {
+            try {
+                const r = await fetch('../../Data_JSON/RVTOOLS.json?t=' + Date.now());
+                if (r.ok) rvK = await r.json();
+            } catch(e) {}
+            try {
+                const r = await fetch('../../Data_JSON/filter.json?t=' + Date.now());
+                if (r.ok) allF = await r.json();
+            } catch(e) {}
+
+            const sc = document.getElementById('sc');
+            sc.innerHTML = '';
+            await new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = '../../Data_JSON/disk_data.js?t=' + Date.now();
+            s.onload = () => {
+                const now = new Date();
+                document.getElementById('dts').textContent =
+                    `4h · ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                render();
+                resolve();
+            };
+            s.onerror = () => {
+                document.getElementById('emptyMsg').innerHTML =
+                    '⏳ Menunggu siklus pertama...<br><small style="color:#484f58">disk_data.js belum tersedia</small>';
+                document.getElementById('emptyMsg').style.display = 'block';
+                resolve();
+            };
+            sc.appendChild(s);
+            }); // end Promise
+        }
+
+        loadData();
+        setInterval(loadData, 15000);
+    </script>
+</body>
+</html>

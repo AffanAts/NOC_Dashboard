@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Grafana logo: sun with spiral -->
+  <!-- Outer gear/sun spikes -->
+  <g fill="#F46800">
+    <circle cx="50" cy="50" r="28"/>
+    <!-- Spikes -->
+    <polygon points="50,5 54,18 46,18" />
+    <polygon points="50,95 54,82 46,82" />
+    <polygon points="5,50 18,54 18,46" />
+    <polygon points="95,50 82,54 82,46" />
+    <polygon points="18,18 27,29 21,35" />
+    <polygon points="82,18 73,29 79,35" />
+    <polygon points="18,82 27,71 21,65" />
+    <polygon points="82,82 73,71 79,65" />
+  </g>
+  <!-- Inner spiral in lighter orange/yellow -->
+  <circle cx="50" cy="50" r="22" fill="#FF8C00"/>
+  <!-- Spiral shape -->
+  <path d="M50,32 A18,18 0 1,1 32,50 A10,10 0 1,0 50,40 A8,8 0 0,1 58,50 A8,8 0 0,1 50,58 A14,14 0 0,1 36,44"
+        fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="50" cy="50" r="5" fill="white"/>
+</svg>

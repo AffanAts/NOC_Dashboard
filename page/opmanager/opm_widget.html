@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+* { box-sizing: border-box; }
+body {
+    background: #0a0e14; color: #f0f6fc;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #0a0e14; }
+::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #30363d; }
+
+.summary {
+    flex-shrink: 0;
+    background: #161c25; padding: 5px 10px;
+    border-bottom: 1px solid #21262d;
+    display: flex; gap: 8px; font-size: 0.72em; font-weight: 500;
+    align-items: center;
+}
+.sum-label {
+    background: #6e40c9; color: #fff;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
+    white-space: nowrap; text-transform: uppercase; flex-shrink: 0;
+}
+.btn-detail {
+    flex-shrink: 0;
+    background: #21262d; color: #8b949e;
+    border: 1px solid #30363d; border-radius: 4px;
+    padding: 2px 8px; font-size: 9px; font-weight: 700;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.btn-detail:hover { background: #30363d; color: #f0f6fc; }
+.ts { font-size: 9px; color: #6e7681; margin-left: auto; white-space: nowrap; }
+
+.scroll-wrap { flex: 1; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+thead { position: sticky; top: 0; z-index: 1; }
+thead tr { background: #0d1117; }
+th {
+    padding: 5px 7px; text-align: left;
+    font-size: 9px; color: #6e7681; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase;
+    border-bottom: 1px solid #30363d;
+    border-right: 1px solid #21262d;
+}
+th:last-child { border-right: none; }
+th:nth-child(1) { width: 32%; }
+th:nth-child(2) { width: 48%; }
+th:nth-child(3) { width: 20%; text-align: right; }
+td {
+    padding: 4px 7px;
+    border-bottom: 1px solid #21262d;
+    border-right: 1px solid #161c25;
+    vertical-align: middle; overflow: hidden;
+}
+td:last-child { border-right: none; }
+tr:hover td { background: #161c25; }
+tr.row-old td { opacity: 0.45; }
+tr.row-old:hover td { opacity: 0.7; }
+@keyframes rowBlink {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(227, 179, 65, 0.12); }
+}
+tr.row-blink td { animation: rowBlink 1.2s ease-in-out infinite; }
+
+.host { font-size: 11px; color: #79c0ff; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dev  { font-size: 9px; color: #6e7681; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg  { font-size: 10px; color: #c9d1d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dur {
+    font-family: 'Courier New', monospace;
+    font-size: 10px; font-weight: 700;
+    text-align: right; white-space: nowrap;
+}
+.dur-open  { color: #ff7b72; }
+.dur-warn  { color: #e3b341; }
+.dur-close { color: #3fb950; }
+.dur-old   { color: #6e7681; }
+.empty { text-align: center; padding: 40px 20px; color: #6e7681; font-size: 12px; line-height: 1.8; }
+.prio-star { color: #f7a800; font-size: 10px; margin-left: 4px; vertical-align: middle; }
+
+</style>
+
+    <style>
+    @media (max-width: 600px) {
+        .host { font-size: 10px; }
+        .dev  { font-size: 8px; }
+        .msg  { font-size: 9px; }
+        th, td { padding: 5px 4px; }
+        .dur  { font-size: 9px; }
+    }
+    </style>
+
+</head>
+<body>
+
+<div class="summary">
+    <span class="sum-label">OpManager</span>
+    <button class="btn-detail" onclick="openModal()">Detail</button>
+    <span style="white-space:nowrap;">ALARM: <b id="oShown" style="color:#ff7b72;">0</b></span>
+    <span class="ts" id="oTs">&#8212;</span>
+</div>
+
+<div class="scroll-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Host / IP</th>
+                <th>Issue</th>
+                <th style="text-align:right;">Durasi</th>
+            </tr>
+        </thead>
+        <tbody id="tbl"></tbody>
+    </table>
+    <div id="emptyMsg" class="empty" style="display:none;"></div>
+</div>
+
+
+<script>
+    const THRESHOLD_OPEN_MS  = 300000; // 5 menit
+    const THRESHOLD_CLOSE_MS = 360000; // 6 menit
+    const MAX_CLOSE_AGE_MS   = 32400000; // 9 jam
+    // Static demo: freeze reference time so durations/blink never change
+    const DEMO_NOW = 1782380522645;
+    let allRows = [];
+    let prioSet = new Set();
+
+    function durStr(t, now) {
+        const ms = now - t.ISSUE_TS;
+        const totalMin = Math.floor(ms / 60000);
+        const d = Math.floor(totalMin / 1440);
+        const h = Math.floor((totalMin % 1440) / 60);
+        const m = totalMin % 60;
+        let label;
+        if (d > 0)      label = d + 'h ' + h + 'j ' + m + 'm';
+        else if (h > 0) label = h + 'j ' + m + 'm';
+        else            label = m + 'm';
+        const cls = totalMin > 20 ? 'dur-old' : 'dur-warn';
+        return '<span class="dur ' + cls + '" title="Open ' + label + '">' + label + '</span>';
+    }
+
+    function isOldRow(t, now) {
+        return Math.floor((now - t.ISSUE_TS) / 60000) > 20;
+    }
+
+    function isBlinkRow(t, now) {
+        const m = Math.floor((now - t.ISSUE_TS) / 60000);
+        return m >= 5 && m <= 10;
+    }
+
+    function truncate(str, max) {
+        if (!str) return '';
+        return str.length > max ? str.slice(0, max) + '…' : str;
+    }
+
+    function loadData() {
+        fetch('../../Data_JSON/filter.json?_=' + Date.now())
+            .then(r => r.json())
+            .then(f => { prioSet = new Set(f.priority || []); })
+            .catch(() => {});
+        fetch('../../Data_JSON/history_opmanager.json?_=' + Date.now())
+            .then(r => r.text())
+            .then(txt => {
+                let hist;
+                try { hist = JSON.parse(txt); } catch(e) { return; }
+                const now = DEMO_NOW;
+                allRows = Object.values(hist)
+                    .filter(t => {
+                        if (t.STATUS !== 'OPEN') return false;
+                        if ((now - t.ISSUE_TS) < THRESHOLD_OPEN_MS) return false;
+                        return true;
+                    })
+                    .sort((a, b) => b.ISSUE_TS - a.ISSUE_TS);
+                render();
+            })
+            .catch(() => {});
+    }
+
+    function render() {
+        const tbody = document.getElementById('tbl');
+        const empty = document.getElementById('emptyMsg');
+        const oShown = document.getElementById('oShown');
+        const oTs    = document.getElementById('oTs');
+
+        if (!allRows.length) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            empty.textContent = 'Tidak ada alarm > 5 menit';
+            oShown.textContent = '0';
+            oTs.textContent = 'Updated: ' + new Date(DEMO_NOW).toLocaleTimeString('id-ID');
+            return;
+        }
+
+        empty.style.display = 'none';
+        oShown.textContent = allRows.length;
+        oTs.textContent    = 'Updated: ' + new Date(DEMO_NOW).toLocaleTimeString('id-ID');
+
+        const now = DEMO_NOW;
+        tbody.innerHTML = allRows.map(function(r) {
+            const host  = r.HOSTNAME || '-';
+            const ip    = r.IP_ADDRESS || '';
+            const msg   = truncate(r.DETAIL_ISSUE || '', 55);
+            const old   = isOldRow(r, now) ? ' row-old' : '';
+            const blink = isBlinkRow(r, now) ? ' row-blink' : '';
+            const prio  = prioSet.has(ip) ? '<span class="prio-star" title="Priority">★</span>' : '';
+            return '<tr class="' + old + blink + '">'
+                + '<td>'
+                + '<div class="host" title="' + esc(host) + '">' + esc(host) + prio + '</div>'
+                + (ip ? '<div class="dev">' + esc(ip) + '</div>' : '')
+                + '</td>'
+                + '<td><div class="msg" title="' + esc(r.DETAIL_ISSUE || '') + '">' + esc(msg) + '</div></td>'
+                + '<td>' + durStr(r, now) + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    function openModal() {
+        window.parent.postMessage({ type: 'OPM_OPEN_TICKET' }, '*');
+    }
+
+    function esc(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    loadData();
+    setInterval(loadData, 30000);
+</script>
+</body>
+</html>

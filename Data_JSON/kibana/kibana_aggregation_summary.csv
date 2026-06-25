@@ -1,0 +1,26 @@
+timestamp,total_hits,total_success,total_fail
+"2026-06-24T22:43:23.670219",631,561,8
+
+channel,total,success,fail,streak
+"Indosat Paket Data",6,6,0,0
+"Indosat Prepaid",11,11,0,0
+"KAI (Gateway)",2,2,0,0
+"My Republic",3,2,1,0
+"Omni Channel (Pulsa)",6,6,0,0
+"PALYJA",5,5,0,0
+"PLN Postpaid",15,12,3,0
+"PLN Prepaid",75,75,0,0
+"Postpaid XL",2,2,0,0
+"Prepaid Telkomsel",29,29,0,0
+"Prepaid Three",2,2,0,0
+"Prepaid XL",2,2,0,0
+"Pulsa Internet TSEL",3,3,0,0
+"TopUp DANA",88,84,4,0
+"TopUp GO-PAY",81,81,0,0
+"TopUp OVO",30,30,0,0
+"TopUp Shopee-Pay",194,194,0,0
+"Unregistered Product",1,1,0,0
+"VA PLN Rusun",4,4,0,0
+"VA TopUp JakOne",6,6,0,0
+"VA Universitas Gunadarma",2,2,0,0
+"Purchase",2,2,0,0

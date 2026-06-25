@@ -1,0 +1,9 @@
+timestamp,total_hits,total_success,total_fail
+"2026-05-28T13:36:16.251452",1380,2006,110
+
+channel,total,success,fail,streak
+"Purchase",426,392,34,0
+"Subsidi",806,736,70,0
+"TopUp New JakCard",140,134,6,0
+"TopUp Old JakCard",6,6,0,0
+"unregistered",738,738,0,0

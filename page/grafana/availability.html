@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #0a0e14; color: #f0f6fc; font-family: 'Inter', system-ui, sans-serif; padding: 8px 10px 10px; margin: 0; -webkit-font-smoothing: antialiased; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #333333; }
+        .summary { background: #161c25; padding: 10px 14px; border-radius: 10px; border: 1px solid #21262d; display: flex; gap: 18px; margin-bottom: 12px; font-size: 0.82em; font-weight: 500; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 8px; }
+
+        /* Card Hover Effect */
+        .card { background: #161b22; border: 1px solid #30363d; padding: 8px; border-radius: 6px; border-left: 4px solid #238636; position: relative; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); border-color: #58a6ff; }
+        
+        .critical { border-left-color: #da3633; background: #2a1215; }
+        .warning { border-left-color: #d29922; background: #261a03; }
+        
+        /* WARNA MERAH GELAP UNTUK NO DATA */
+        .stale-card { border-left-color: #8b0000 !important; background: #1a0505 !important; }
+
+        .blink { animation: blk 1s infinite; }
+        @keyframes blk { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        
+        /* CLASS AUTO-REDUP (>1 JAM). Dibuat tidak terlalu redup (Opacity 0.7) */
+        .dimmed-card { opacity: 0.8 !important; background: #140909 !important; animation: none !important; filter: grayscale(30%); }
+
+        .ip-main { font-size: 11px; color: #58a6ff; font-weight: 800; font-family: monospace; margin-bottom: 4px; display: flex; align-items: center; }
+        .host-sub { font-size: 10px; color: #8b949e; margin-bottom: 8px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .loss { font-size: 1.4em; font-weight: 800; margin: 2px 0; }
+        .dur { font-size: 0.7em; color: #ff7b72; font-weight: bold; }
+        .incident-badge { background: #f1e05a; color: #000; padding: 0px 4px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 6px; font-family: sans-serif; }
+
+        /* Tombol dan Modal Excluded */
+        .btn-ex {
+            background: #161c25; border: 1px solid #30363d; color: #8b949e;
+            padding: 5px 12px; border-radius: 7px; cursor: pointer; font-size: 0.85em; font-weight: 600;
+            margin-left: auto; font-family: inherit;
+            transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-ex:hover { background: #1c2330; color: #f0f6fc; border-color: #484f58; transform: translateY(-1px); }
+        
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #161b22; border: 1px solid #30363d; border-radius: 8px; width: 90%; max-width: 400px;
+            max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .modal-header { padding: 12px 15px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 10px;}
+        .modal-header h3 { margin: 0; font-size: 14px; color: #c9d1d9; margin-right: auto;}
+        .close-btn { background: none; border: none; color: #ff7b72; font-weight: bold; cursor: pointer; font-size: 16px; padding: 0 5px;}
+        .modal-body { padding: 10px; overflow-y: auto; }
+        .ex-list-item { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #30363d; font-size: 12px; align-items: center;}
+        .ex-list-item:last-child { border-bottom: none; }
+        .ex-host { color: #8b949e; font-size: 10px; text-align: right; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .grafana-link { color: #58a6ff; font-family: 'JetBrains Mono', monospace; font-weight: 700; text-decoration: none; cursor: pointer; transition: all 180ms ease; }
+        .grafana-link:hover { text-decoration: underline; color: #79c0ff; text-shadow: 0 0 8px rgba(88,166,255,0.5); }
+        .btn-bulk-grafana { background: linear-gradient(135deg, #1f6feb, #58a6ff); border: none; color: white; padding: 6px 14px; border-radius: 7px; cursor: pointer; font-size: 10px; font-weight: 700; transition: all 180ms ease; box-shadow: 0 2px 6px rgba(31, 111, 235, 0.3); font-family: inherit; }
+        .btn-bulk-grafana:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4); }
+    </style>
+
+    <style>
+    @media (max-width: 600px) {
+        body { padding: 4px 5px 6px; font-size: 12px; }
+        .summary { padding: 6px 8px; gap: 8px; font-size: 0.75em; flex-wrap: wrap; }
+        .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 5px; }
+        .card { padding: 6px; }
+        .val { font-size: 1.2em; }
+        .ip-main { font-size: 10px; }
+    }
+    </style>
+
+</head>
+<body>
+    <div class="summary">
+        <span style="background:#238636; color:#fff; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.6px; white-space:nowrap; text-transform:uppercase; flex-shrink:0;">Network Availability</span>
+        <span style="white-space: nowrap;">TOTAL: <b id="stotal">0</b></span>
+        <span style="white-space: nowrap;">CRIT: <b id="sc" style="color:#ff7b72">0</b></span>
+        <span style="white-space: nowrap;">WARN: <b id="sw" style="color:#d29922">0</b></span>
+        <button id="btnShowEx" class="btn-ex" onclick="openModal('exModal')">Excluded: 0</button>
+    </div>
+    
+    <div id="grid" class="grid"></div>
+    <div id="sc_box"></div>
+
+    <div id="exModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>List Excluded (ex_ava)</h3>
+                <button id="btnBulkGrafana" class="btn-bulk-grafana" onclick="openAllExcludedInGrafana()" style="display: none;">📈 BUKA SEMUA</button>
+                <button class="close-btn" onclick="closeModal('exModal')">X</button>
+            </div>
+            <div class="modal-body" id="exListBody"></div>
+        </div>
+    </div>
+
+    <script>
+        // Static demo — freeze reference time so durations never change
+        const DEMO_NOW = 1782380522645;
+        let cfg = {filter:'all', showOk: true, search: ''};
+        let allF = {v1:[], v2:[], app_level:[], priority:[], excluded:[], ex_ava:[]};
+        let hist = {};
+        let logData = [];
+
+        window.rvtoolsKamus = {};
+
+        async function loadRVToolsKamus() {
+            try {
+                const response = await fetch('../../Data_JSON/RVTOOLS.json?t=' + Date.now());
+                if (response.ok) {
+                    window.rvtoolsKamus = await response.json();
+                }
+            } catch (e) {
+                console.warn("Gagal memuat RVTOOLS.json", e);
+            }
+        }
+
+        async function loadHistoryLog() {
+            try {
+                const response = await fetch('../../Data_JSON/history_log.json?t=' + Date.now());
+                if (response.ok) { logData = await response.json(); }
+            } catch (e) { console.warn("History log load error", e); }
+        }
+
+        window.addEventListener('message', e => {
+            if (e.data.allF) { allF = e.data.allF; }
+            if (e.data.allH) { hist = e.data.allH.AVA || {}; }
+            if (e.data.allL) { logData = e.data.allL; }
+            cfg = e.data;
+            render();
+        });
+
+        async function sync() {
+            await loadRVToolsKamus();
+            await loadHistoryLog();
+            // Load filter data langsung dari filter.json
+            try {
+                const respFilt = await fetch('../../Data_JSON/filter.json?t=' + Date.now());
+                if (respFilt.ok) {
+                    allF = await respFilt.json();
+                }
+            } catch (e) {
+                console.warn("Gagal memuat filter.json:", e);
+            }
+            const container = document.getElementById('sc_box');
+            container.innerHTML = '';
+            const s = document.createElement('script');
+            s.id = 'data-script';
+            s.src = '../../Data_JSON/data.js?t=' + Date.now();
+            s.onload = () => {
+                // Extract history data dari dataUtil.AVA setelah data.js loaded
+                if (typeof dataUtil !== 'undefined' && dataUtil.AVA) {
+                    hist = dataUtil.AVA;
+                }
+                render();
+            };
+            container.appendChild(s);
+        }
+
+        function getDur(timestampInput) {
+            if(!timestampInput) return "...";
+            let pastTime;
+            if (typeof timestampInput === 'number') { pastTime = new Date(timestampInput); }
+            else { pastTime = new Date(timestampInput.replace(/-/g,"/")); }
+
+            if (isNaN(pastTime)) return "...";
+            const diff = Math.floor((DEMO_NOW - pastTime.getTime()) / 1000);
+            if (diff < 0) return "...";
+            const d = Math.floor(diff/86400), h = Math.floor((diff%86400)/3600), m = Math.floor((diff%3600)/60);
+            return (d>0?d+"d ":"") + (h>0?h+"h ":"") + m + "m";
+        }
+
+        // HITUNG TOTAL INSIDEN AVAILABILITY UNTUK IP INI DI HISTORY LOG
+        function getIncidentCount(ip) {
+            if (!logData || !logData.length || !ip) return 0;
+            const cleanTarget = ip.split(':')[0];
+            return logData.filter(l => {
+                if (!l.ip) return false;
+                const cleanLogIP = l.ip.split(':')[0];
+                if (cleanLogIP !== cleanTarget) return false;
+                const type = (l.type || "").toUpperCase();
+                return type.includes('AVAILABILITY') || type.includes('DOWN');
+            }).length;
+        }
+
+        function openGrafanaForIp(ip) {
+            const grafanaUrl = `https://grafana.example.com:3000/d/noc-dash-beta/noc-overview-v2?orgId=1&from=now-1h&to=now&timezone=browser&var-nodeip_green=$__all&var-nodename_green=$__all&var-nodeip_red=$__all&var-nodename_red=$__all&var-nodeip_all=${ip}&viewPanel=panel-72&refresh=30s`;
+            window.open(grafanaUrl, '_blank');
+        }
+
+        function openAllExcludedInGrafana() {
+            const exList = allF.ex_ava || [];
+            if (exList.length === 0) return alert("Tidak ada IP di daftar Excluded.");
+            
+            let ipParams = exList.map(ip => `&var-nodeip_all=${ip}`).join('');
+            
+            const grafanaUrl = `https://grafana.example.com:3000/d/noc-dash-beta/noc-overview-v2?orgId=1&from=now-1h&to=now&timezone=browser&var-nodeip_green=$__all&var-nodename_green=$__all&var-nodeip_red=$__all&var-nodename_red=$__all${ipParams}&viewPanel=panel-72&refresh=30s`;
+            window.open(grafanaUrl, '_blank');
+        }
+
+        function getChartData(ip) {
+            let frames = [];
+            if (typeof dataDS1 !== 'undefined' && dataDS1.results?.A?.frames) frames.push(...dataDS1.results.A.frames);
+            if (typeof dataDS2 !== 'undefined' && dataDS2.results?.A?.frames) frames.push(...dataDS2.results.A.frames);
+            for (const f of frames) {
+                const lbl = f.schema?.fields?.[1]?.labels || {};
+                const fip = lbl.url || lbl.instance || '';
+                if (fip !== ip) continue;
+                return { times: f.data.values[0], values: f.data.values[1], module: 'Packet Loss', threshold: 100, warnLevel: 1, critColor: '#ff7b72' };
+            }
+            return null;
+        }
+
+        function showAssetDetail(ip, valText, isCrit, durText, isStale) {
+            const rvData = window.rvtoolsKamus[ip];
+            const vmName = rvData ? rvData.VM : ip;
+            const fullTitleText = `${ip} [${vmName}]`;
+            
+            const grafanaUrl = `https://grafana.example.com:3000/d/noc-dash-beta/noc-overview-v2?orgId=1&from=now-1h&to=now&timezone=browser&var-nodeip_green=$__all&var-nodename_green=$__all&var-nodeip_red=$__all&var-nodename_red=$__all&var-nodeip_all=${ip}&viewPanel=panel-72&refresh=30s`;
+            
+            let statusText = isCrit ? (isStale ? 'CRITICAL (NO DATA)' : 'CRITICAL (DOWN)') : 'NORMAL';
+
+            let tableHTML = `
+                <tr><td>Status Monitoring</td><td style="color:${isCrit ? '#ff7b72' : '#3fb950'}; font-weight:bold;">${statusText}</td></tr>
+                <tr><td>Packet Loss</td><td style="color:${isCrit ? '#ff7b72' : '#3fb950'}; font-weight:bold;">${valText}</td></tr>
+            `;
+
+            if (isCrit && durText) {
+                tableHTML += `<tr><td>Duration</td><td style="color:#ff7b72; font-weight:bold;">${durText}</td></tr>`;
+            }
+
+            if (rvData) {
+                tableHTML += `
+                    <tr><td>OS</td><td style="color:#8b949e; font-size:10px;">${rvData.OS_Config || rvData.OS_Tools || '-'}</td></tr>
+                    <tr><td>CPUs</td><td>${rvData.CPUs || '-'} Core</td></tr>
+                    <tr><td>Active Memory</td><td>${rvData.ActiveMemory || '-'} MB</td></tr>
+                    <tr><td>Datacenter</td><td>${rvData.Datacenter || '-'}</td></tr>
+                    <tr><td>Cluster</td><td>${rvData.Cluster || '-'}</td></tr>
+                    <tr><td>Host Node</td><td style="font-size:10px;">${rvData.Host || '-'}</td></tr>
+                    <tr><td>Creation Date</td><td style="font-size:10px;">${rvData.CreationDate || '-'}</td></tr>
+                `;
+            }
+
+            tableHTML += `
+                <tr>
+                    <td colspan="2" style="padding-top: 15px; border-bottom: none;">
+                        <button onclick="window.open('${grafanaUrl}', '_blank')" style="background: transparent; border: 1px dashed #58a6ff; color: #58a6ff; width: 100%; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s;" onmouseover="this.style.background='rgba(31,111,235,0.2)'" onmouseout="this.style.background='transparent'">
+                            📈 BUKA GRAFANA (AVAILABILITY)
+                        </button>
+                    </td>
+                </tr>
+            `;
+
+            const critLimit = allF.app_level && allF.app_level.includes(ip) ? 60 : 70;
+            const mockTicketObj = { ip: ip, hostname: vmName, moduleName: "Availability", limit: critLimit, badges: "", detail: isStale ? "Availability No Data" : "" };
+
+            window.parent.postMessage({
+                type: 'SHOW_ASSET_DETAIL',
+                payload: {
+                    fullTitle: fullTitleText,
+                    tableHTML: tableHTML,
+                    isCrit: isCrit,
+                    waObj: mockTicketObj,
+                    chartData: getChartData(ip)
+                }
+            }, '*');
+        }
+
+        function render() {
+            if(typeof dataDS1 === 'undefined') return;
+            const grid = document.getElementById('grid');
+            const tempGrid = document.createDocumentFragment();
+            let frames = [...(dataDS1.results?.A?.frames||[]), ...(dataDS2.results?.A?.frames||[])];
+            
+            let active = [];
+            const registered = [...(allF.v1||[]), ...(allF.v2||[]), ...(allF.app_level||[]), ...(allF.priority||[])];
+            
+            if (cfg.filter === 'all') {
+                active = registered;
+            } else if (cfg.filter === 'unfilter') {
+                const unfilterList = allF.unfilter || [];
+                active = [...new Set([...unfilterList, ...registered])];
+            } else if (cfg.filter === 'priority') {
+                active = allF.priority || [];
+            } else {
+                active = allF[cfg.filter] || [];
+            }
+            
+            let items = [], st = {c:0, w:0}, critIPs = [], maxMinutes = 0;
+
+            const exAvaCount = (allF.ex_ava) ? allF.ex_ava.length : 0;
+            document.getElementById('btnShowEx').innerText = `Excluded: ${exAvaCount}`;
+
+            // 1. PROSES DATA YANG ADA DI GRAFANA
+            frames.forEach(f => {
+                if(!f.data?.values?.[0] || !f.data?.values?.[1] || f.data.values[1].length === 0) return;
+                
+                const times = f.data.values[0];
+                const lastTs = times[times.length - 1] || DEMO_NOW;
+                const ageMs = DEMO_NOW - lastTs;
+                const isStale = false; // static demo — no stale logic
+
+                const hostIP = f.schema?.fields?.[1]?.labels?.url || f.schema?.fields?.[1]?.labels?.instance;
+                if (!hostIP) return;
+
+                const loss = f.data.values[1][f.data.values[1].length - 1] || 0;
+                
+                if(!active.includes(hostIP)) return;
+
+                const isExAva = (allF.ex_ava && allF.ex_ava.includes(hostIP));
+                if (isExAva && cfg.filter !== 'unfilter') return;
+
+                const isPriority = (allF.priority && allF.priority.includes(hostIP));
+                const isExcludedMarker = (allF.excluded && allF.excluded.includes(hostIP)); 
+                
+                let badges = "";
+                if (isPriority) badges += `<span style="background:#da3633; color:#fff; padding:1px 5px; border-radius:3px; font-size:10px; font-weight:bold; box-shadow: 0 0 5px rgba(0,0,0,0.5);">P</span>`;
+                if (isExcludedMarker) badges += `<span style="background:#d29922; color:#fff; padding:1px 5px; border-radius:3px; font-size:10px; font-weight:bold; box-shadow: 0 0 5px rgba(0,0,0,0.5);">E</span>`;
+                const badgeContainer = badges !== "" ? `<div style="position:absolute; top:8px; right:8px; display:flex; gap:4px; z-index:5;">${badges}</div>` : "";
+
+                const vmName = (window.rvtoolsKamus[hostIP] && window.rvtoolsKamus[hostIP].VM) ? window.rvtoolsKamus[hostIP].VM : hostIP;
+
+                const matchSearch = !cfg.search || hostIP.includes(cfg.search) || vmName.toLowerCase().includes(cfg.search.toLowerCase());
+                if(!matchSearch) return;
+
+                let s = "normal", col = "#3fb950", p = 3;
+                let displayVal = loss.toFixed(1) + "%";
+                let durText = "";
+                let tsMs = DEMO_NOW;
+
+                if (isStale) {
+                    s = "critical stale-card"; col = "#c93c37"; st.c++; p = 1; critIPs.push(hostIP);
+                    displayVal = "NO DATA";
+                    tsMs = lastTs;
+                    durText = getDur(lastTs);
+                    const diffM = Math.floor((DEMO_NOW - lastTs) / 60000);
+                    if (diffM > maxMinutes) maxMinutes = diffM;
+                } else if(loss >= 100){
+                    s="critical"; col="#ff7b72"; st.c++; p=1;
+                    critIPs.push(hostIP);
+                    displayVal = "DOWN";
+                    if (hist[hostIP]) {
+                        tsMs = new Date(hist[hostIP].replace(/-/g, "/")).getTime();
+                        durText = getDur(tsMs);
+                        const diffM = Math.floor((DEMO_NOW - tsMs) / 60000);
+                        if (diffM > maxMinutes) maxMinutes = diffM;
+                    }
+                }
+                else if(loss > 0){ s="warning"; col="#d29922"; st.w++; p=2; }
+                
+                if(s === "normal" && !cfg.showOk) return;
+                items.push({hostIP, vmName, loss, displayVal, isStale, s, col, p, badgeContainer, presetDur: durText, tsMs: tsMs});
+            });
+
+            // 3. SORTING MURNI BY WAKTU & AUTO-REDUP JIKA >= 60 MENIT
+            items.sort((a,b) => {
+                if (a.p !== b.p) return a.p - b.p; 
+                if (a.p === 1) return b.tsMs - a.tsMs; // Waktu paling baru di sebelah kiri
+                return b.loss - a.loss; 
+            }).forEach(i => {
+                
+                // LOGIKA AUTO-REDUP (Jika sudah 60 menit atau lebih)
+                let diffMinutes = Math.floor((DEMO_NOW - i.tsMs) / 60000);
+                let isDimmed = (i.s.includes("critical") && diffMinutes >= 60);
+
+                let blink = (i.s.includes("critical") && !i.isStale && !isDimmed && hist[i.hostIP] && ((DEMO_NOW - new Date(hist[i.hostIP].replace(/-/g, "/")).getTime()) / 60000 < 16)) ? "blink" : "";
+                
+                const isCritBool = i.s.includes("critical");
+
+                const card = document.createElement('div'); 
+                card.className = `card ${i.s} ${blink} ${isDimmed ? 'dimmed-card' : ''}`;
+                
+                card.onclick = () => showAssetDetail(i.hostIP, i.displayVal, isCritBool, i.presetDur, i.isStale);
+
+                const valStyle = i.isStale ? "font-size:1.1em; letter-spacing:1px;" : "";
+                const badgeCount = getIncidentCount(i.hostIP);
+
+                card.innerHTML = `
+                    ${i.badgeContainer}
+                    <div class="ip-main">${i.hostIP}${badgeCount >= 2 ? `<span class="incident-badge">x${badgeCount}</span>` : ""}</div>
+                    <div class="host-sub" title="${i.vmName}">${i.vmName}</div>
+                    <div class="loss" style="color:${i.col}; ${valStyle}">${i.displayVal}</div>
+                    ${isCritBool ? `<div class="dur">${i.presetDur}</div>` : ""}
+                `;
+                
+                tempGrid.appendChild(card);
+            });
+
+            grid.innerHTML = ''; 
+            grid.appendChild(tempGrid);
+            document.getElementById('sc').innerText = st.c; 
+            document.getElementById('sw').innerText = st.w;
+            document.getElementById('stotal').innerText = items.length;
+            
+            window.parent.postMessage({
+                type: 'ALARM_SIGNAL', totalCrit: st.c, critIPs: critIPs, maxDur: maxMinutes, module: 'AVA',
+                totalCount: frames.length, filteredCount: active.length
+            }, '*');
+        }
+
+        function openModal(modalId) {
+            if(modalId === 'exModal') {
+                const listBody = document.getElementById('exListBody');
+                const btnBulk = document.getElementById('btnBulkGrafana');
+                
+                listBody.innerHTML = '';
+                const exList = allF.ex_ava || [];
+                
+                if (exList.length === 0) {
+                    btnBulk.style.display = 'none'; // Sembunyikan tombol Buka Semua
+                    listBody.innerHTML = '<div style="text-align:center; padding: 20px; color:#8b949e;">Tidak ada IP di ex_ava</div>';
+                } else {
+                    btnBulk.style.display = 'block'; // Tampilkan tombol Buka Semua
+                    exList.forEach(ip => {
+                        const vmName = (window.rvtoolsKamus[ip] && window.rvtoolsKamus[ip].VM) ? window.rvtoolsKamus[ip].VM : '-';
+                        listBody.innerHTML += `
+                            <div class="ex-list-item">
+                                <a href="javascript:void(0)" onclick="openGrafanaForIp('${ip}')" class="grafana-link" title="Buka di Grafana">${ip}</a>
+                                <span class="ex-host" title="${vmName}">${vmName}</span>
+                            </div>
+                        `;
+                    });
+                }
+            }
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+        
+        window.onclick = function(event) { 
+            if (event.target === document.getElementById('exModal')) closeModal('exModal'); 
+        }
+
+        loadRVToolsKamus().then(() => {
+            sync(); 
+            setInterval(sync, 10000); 
+        });
+    </script>
+</body>
+</html>
