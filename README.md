@@ -16,9 +16,9 @@
 
 | | |
 |---|---|
-| ![Main Dashboard](src/img/aplikasi/ss-01-main-dashboard.png) | ![OpManager Alarms](src/img/aplikasi/ss-02-opmanager.png) |
-| ![Grafana CPU Monitor](src/img/aplikasi/ss-03-grafana-cpu.png) | ![Kibana Channels](src/img/aplikasi/ss-04-kibana.png) |
-| ![PRTG Status](src/img/aplikasi/ss-05-prtg.png) | |
+| ![Main Dashboard](https://raw.githubusercontent.com/AffanAts/NOC_Dashboard/main/src/img/aplikasi/ss-01-main-dashboard.png) | ![OpManager Alarms](https://raw.githubusercontent.com/AffanAts/NOC_Dashboard/main/src/img/aplikasi/ss-02-opmanager.png) |
+| ![Grafana CPU Monitor](https://raw.githubusercontent.com/AffanAts/NOC_Dashboard/main/src/img/aplikasi/ss-03-grafana-cpu.png) | ![Kibana Channels](https://raw.githubusercontent.com/AffanAts/NOC_Dashboard/main/src/img/aplikasi/ss-04-kibana.png) |
+| ![PRTG Status](https://raw.githubusercontent.com/AffanAts/NOC_Dashboard/main/src/img/aplikasi/ss-05-prtg.png) | |
 
 ---
 
