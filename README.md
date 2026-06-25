@@ -16,9 +16,9 @@
 
 | | |
 |---|---|
-| ![Main Dashboard](src/img/aplikasi/Screenshot%202026-06-25%20at%2018.09.09.png) | ![OpManager Alarms](src/img/aplikasi/Screenshot%202026-06-25%20at%2018.09.24.png) |
-| ![Grafana CPU Monitor](src/img/aplikasi/Screenshot%202026-06-25%20at%2018.09.38.png) | ![Kibana Channels](src/img/aplikasi/Screenshot%202026-06-25%20at%2018.09.55.png) |
-| ![PRTG Status](src/img/aplikasi/Screenshot%202026-06-25%20at%2018.10.09.png) | |
+| ![Main Dashboard](src/img/aplikasi/ss-01-main-dashboard.png) | ![OpManager Alarms](src/img/aplikasi/ss-02-opmanager.png) |
+| ![Grafana CPU Monitor](src/img/aplikasi/ss-03-grafana-cpu.png) | ![Kibana Channels](src/img/aplikasi/ss-04-kibana.png) |
+| ![PRTG Status](src/img/aplikasi/ss-05-prtg.png) | |
 
 ---
 
